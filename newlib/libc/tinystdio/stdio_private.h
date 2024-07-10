@@ -151,12 +151,25 @@ __stdio_sflags (const char *mode)
     return __posix_sflags (mode, &omode);
 }
 
+#ifdef _WANT_FLOCKFILE
+#define FILE_FN_UNLOCKED_SPECIFIER static inline
+#define FILE_FN_UNLOCKED(_fn) _fn##_unlocked
+
+wint_t ungetwc_unlocked(wint_t c, FILE *stream);
+int ungetc_unlocked(int c, FILE *stream);
+int fgetc_unlocked(FILE *stream);
+
 #else
+#define FILE_FN_UNLOCKED_SPECIFIER
+#define FILE_FN_UNLOCKED(_fn) _fn
+#endif
+
+#else // POSIX_IO
 
 int
 __stdio_sflags (const char *mode);
 
-#endif
+#endif // POSIX_IO
 
 int	__d_vfprintf(FILE *__stream, const char *__fmt, va_list __ap) __FORMAT_ATTRIBUTE__(printf, 2, 0);
 int	__f_vfprintf(FILE *__stream, const char *__fmt, va_list __ap) __FORMAT_ATTRIBUTE__(printf, 2, 0);

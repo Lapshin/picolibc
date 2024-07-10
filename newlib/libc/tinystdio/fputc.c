@@ -34,15 +34,20 @@
 int
 fputc(int c, FILE *stream)
 {
+    int ret = EOF;
+    __flockfile(stream);
 	if ((stream->flags & __SWR) == 0)
-		return EOF;
+		goto exit;
 
 	if (stream->put(c, stream) < 0) {
                 stream->flags |= __SERR;
-		return EOF;
+		goto exit;
         }
 
-	return (unsigned char) c;
+	ret = (unsigned char) c;
+exit:
+    __funlockfile(stream);
+	return ret;
 }
 
 #ifdef _HAVE_ALIAS_ATTRIBUTE

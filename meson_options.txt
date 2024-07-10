@@ -172,6 +172,8 @@ option('printf-small-ultoa', type: 'boolean', value: true,
        description: 'Avoid softare division in decimal conversions')
 option('minimal-io-long-long', type: 'boolean', value: false,
        description: 'enable long long type support in minimal printf/scanf')
+option('flockfile', type: 'boolean', value: false,
+       description: 'enable thread-safe mode for stream functions')
 
 #
 # Options applying to only legacy stdio

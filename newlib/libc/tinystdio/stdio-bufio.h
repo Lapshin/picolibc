@@ -95,12 +95,32 @@ static inline void __bufio_lock_close(FILE *f) {
 
 static inline void __bufio_lock(FILE *f) {
 	(void) f;
+#ifndef _WANT_FLOCKFILE
 	__lock_acquire(((struct __file_bufio *) f)->lock);
+#endif
 }
 
 static inline void __bufio_unlock(FILE *f) {
 	(void) f;
+#ifndef _WANT_FLOCKFILE
 	__lock_release(((struct __file_bufio *) f)->lock);
+#endif
+}
+
+static inline void __flockfile(FILE *f) {
+	(void) f;
+#ifdef _WANT_FLOCKFILE
+	if (f->flags & __SBUF)
+		__lock_acquire(((struct __file_bufio *) f)->lock);
+#endif
+}
+
+static inline void __funlockfile(FILE *f) {
+	(void) f;
+#ifdef _WANT_FLOCKFILE
+	if (f->flags & __SBUF)
+		__lock_release(((struct __file_bufio *) f)->lock);
+#endif
 }
 
 int
