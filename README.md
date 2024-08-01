@@ -138,11 +138,164 @@ use Picolibc:
  * [Printf and Scanf in Picolibc](doc/printf.md)
  * [Thread Local Storage](doc/tls.md)
  * [Re-entrancy and Locking](doc/locking.md)
+ * [Selecting ctype implementation](doc/ctype.md)
  * [Picolibc as embedded source](doc/embedsource.md)
  * [Releasing Picolibc](doc/releasing.md)
  * [Copyright and license information](COPYING.picolibc)
 
 ## Releases
+
+### Picolibc release 1.8.next
+
+ * Support ARM v8.1-m BTI and PAC features
+
+ * Fix stdio buffered backend automatic flushing of stdout when
+   reading stdin.
+
+ * Support _FORTIFY_SOURCE=3
+
+ * Fix several fesetround implementations to return an error when
+   passed an invalid argument. Thanks to Abdallah Abdelhafeez.
+
+ * Document headers which the compiler must provide. Thanks to Alexey
+   Brodkin.
+
+ * Generate mktemp/tmpnam filenames using random() so they don't
+   repeat even if they aren't used before another name is generated.
+
+ * Set error flag when fgetc is called on an file without read
+   mode. Thanks to Mohamed Moawad.
+
+ * Add type casting to CMPLX, CMPLXF and CMPLXL macros (as glibc
+   does). Thanks to Mostafa Salman.
+
+ * Add mips64 support and build the library during CI.
+
+ * Make fgets return any accumulated string on EOF instead of
+   always returning NULL. Thanks to Hana Ashour.
+
+ * Use C99 minimum array size in asctime_r and ctime_r API
+   declarations ('[static 26]'). Bounds check the generated value and
+   return NULL/EOVERFLOW on overflow.
+
+ * Make Zephyr's -Oz cmake option enable
+   PREFER_SIZE_OVER_SPEED. Thanks to Jonathon Penix.
+
+ * Add funopen to tinystdio.
+
+ * Validate all public headers with a C++ compiler to make sure they
+   at least compile successfully. Fix time.h.
+
+ * Stop using -include picolibc.h during library build.
+
+ * Add -Wmissing-declarations and -Wmissing-prototypes to library
+   build flags. Fix a rather large pile of missing prototypes caused
+   by source files failing to add _GNU_SOURCE or _DEFAULT_SOURCE
+   definitions.
+
+ * Add POSIX "unlocked" I/O functions to tinystdio. These don't
+   actually do anything because tinystdio doesn't do any
+   locking. However, flockfile/funlockfile grab the global C library
+   lock so applications synchronizing with that API will "work".
+
+ * Fix wide orientation handling in tinystdio. Thanks to Ahmed Shehab.
+
+ * Add aarch64 soft float support for armv8. Clang allows this with
+   -march=armv8-a+nofp -mabi=aapcs-soft. This required building a
+   custom toolchain that included a compiler-rt library built with the
+   right options.
+
+ * Add fgetpos and fsetpos to tinystdio. Thanks to Hana Ashour.
+
+ * Restore missing members of 'struct sigevent'. Over eager removal of
+   _POSIX_THREADS support caused these to be accidentally deleted some
+   time ago.
+
+ * Test on i386 native target.
+
+ * Fix hex float scanning and printing. Thanks to Hana Ashour and
+   Ahmed Shehab.
+
+ * Fix double rounding in %f printf. Thanks to Ahmed Shehab for
+   constructing a test case that identified the issue.
+
+ * Add mem_align to the "big" malloc version. Thanks to Simon Tatham.
+
+ * Adjust POSIX and C headers to limit symbol exposure to that
+   specified in the standards.
+
+ * Fix rounding in float scanf. This does round twice for input longer
+   than the required number of digits, but that's permitted by the C
+   specification.
+
+ * Support %a/%A in scanf. Support arbitrary precision in %a/%A
+   printf. Fix NaN/INF formatting in %a/%A printf. Thanks to Ahmed
+   Shehab.
+
+ * Provide a build-time option to enable %n in printf. This is
+   disabled by default for security concerns, but supported in case
+   someone needs strict C conformance. Thanks to Ahmed Shehab.
+
+ * Make freopen clear the unget buffer. Thanks to Mostafa Salman.
+
+ * Fix wide and multi-byte character support in printf and scanf. For
+   strict standards conformance, there's now an option that enables
+   %lc/%ls in printf even if multi-byte support is not enabled.
+
+### Picolibc version 1.8.6
+
+ * Fix some FORTITY_SOURCE issues with tinystdio
+
+ * Add __eh_* symbols to picolibc.ld for LLVM libunwind. Thanks Alex
+   Richardson.
+
+ * Merge in newlib annual release (4.4.0). Some minor updates to
+   aarch64 assembly code formatting (thanks to Sebastian Huber) and a
+   few other fixes.
+
+ * Enable 32-bit SPARC for testing.
+
+ * Fix a bunch of fmemopen bugs and add some tests. Thanks to Alex
+   Richardson.
+
+ * Finish support for targets with unusual float types, mapping
+   target types to 32-, 64-, 80- and 128- bit picolibc code.
+
+ * Add SuperH support, including testing infrastructure. Thanks to
+   Adrian Siekierka for help with this.
+
+ * Improve debugger stack trace in risc-v exception code. Thanks to
+   Alex Richardson.
+
+ * Add an option (-Dfast-bufio=true) for more efficient fread/fwrite
+   implementations when layered atop bufio. Thanks for the suggestion
+   from Zachary Yedidia.
+
+ * Fix cmake usage of FORMAT_ variables (note the lack of a leading
+   underscore).
+
+ * Remove explicit _POSIX_C_SOURCE definition in zephyr/zephr.cmake.
+
+ * Clean up public inline functions to share a common mechanism for
+   using gnu_inline semantics. Fix isblank. This ensures that no
+   static inline declarations exist in public API headers which are
+   required to be external linkage ("real") symbols.
+
+ * Create an alternate ctype implementation that avoids using the
+   _ctype_ array and just does direct value comparisons. This only
+   works when picolibc is limited to ASCII. Applications can select
+   whether they want this behavior at application compilation time
+   without needing to rebuild the C library. Thanks to P. Frost for
+   the suggestion.
+
+ * Unify most fenv implementations to use gnu_inline instead of
+   regular functions to improve performance. x86 was left out because
+   those fenv functions are complicated by the mix of 8087 and modern
+   FPU support.
+
+ * Add a separate FILE for stderr when using POSIX I/O. Split
+   stdin/stdout/stderr into three files to avoid pulling in
+   those which aren't used. Thanks to Zachary Yedidia.
 
 ### Picolibc version 1.8.5
 

@@ -30,6 +30,10 @@
 #ifndef _SYS_FENV_H_
 #define _SYS_FENV_H_
 
+#include <sys/cdefs.h>
+
+_BEGIN_STD_C
+
 /*******************************************************************************
  * THIS FILE IS A TEMPLATE, INTENDED TO BE USED AS A STARTING POINT FOR
  * TARGET-SPECIFIC FLOATING-POINT IMPLEMENTATIONS.  NOTES BELOW HIGHLIGHT THE
@@ -83,11 +87,11 @@
  * Other implementation-specific rounding modes may be defined, and must start
  * with FE_ followed by a capital letter.
  */
+#define FE_TONEAREST  	0
 /*
 #define FE_DOWNWARD   	1
-#define FE_TONEAREST  	2
-#define FE_TOWARDZERO 	3
-#define FE_UPWARD     	4
+#define FE_TOWARDZERO 	2
+#define FE_UPWARD     	3
 */
 
 /*
@@ -100,5 +104,16 @@
  */
 typedef int fenv_t;
 typedef int fexcept_t;
+
+_END_STD_C
+
+#if !defined(__declare_fenv_inline) && defined(__declare_extern_inline)
+#define	__declare_fenv_inline(type) __declare_extern_inline(type)
+#endif
+
+#ifdef __declare_fenv_inline
+#include <machine/fenv-softfloat.h>
+#endif
+
 
 #endif /* _SYS_FENV_H_ */

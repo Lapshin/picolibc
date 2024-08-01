@@ -34,7 +34,6 @@ SUCH DAMAGE.
 extern "C" {
 #endif
 
-#include "_ansi.h"
 #include <sys/cdefs.h>
 #include <sys/features.h>
 #include <sys/types.h>
@@ -47,9 +46,6 @@ extern "C" {
 typedef	__sigset_t	sigset_t;
 #endif
 
-#if defined(__CYGWIN__)
-#include <cygwin/signal.h>
-#else
 
 #if defined(_POSIX_REALTIME_SIGNALS) || __POSIX_VISIBLE >= 199309
 
@@ -77,7 +73,11 @@ struct sigevent {
   int              sigev_notify;               /* Notification type */
   int              sigev_signo;                /* Signal number */
   union sigval     sigev_value;                /* Signal value */
-
+#if defined(_POSIX_THREADS)
+  void           (*sigev_notify_function)( union sigval );
+                                               /* Notification function */
+  pthread_attr_t  *sigev_notify_attributes;    /* Notification Attributes */
+#endif
 };
 
 /* Signal Actions, P1003.1b-1993, p. 64 */
@@ -149,7 +149,6 @@ struct sigaction
 	int sa_flags;
 };
 #endif /* defined(__rtems__) */
-#endif /* defined(__CYGWIN__) */
 
 #if __BSD_VISIBLE || __XSI_VISIBLE >= 4 || __POSIX_VISIBLE >= 200809
 /*
@@ -389,11 +388,6 @@ int str2sig(const char *__restrict, int *__restrict);
 }
 #endif
 
-#if defined(__CYGWIN__)
-#if __XSI_VISIBLE >= 4 || __POSIX_VISIBLE >= 200809
-#include <sys/ucontext.h>
-#endif
-#endif
 
 #ifndef _SIGNAL_H_
 /* Some applications take advantage of the fact that <sys/signal.h>

@@ -75,8 +75,7 @@ C99, POSIX-1.2008
 */
 
 #define _DEFAULT_SOURCE
-#include <_ansi.h>
-#include <newlib.h>
+#include <sys/cdefs.h>
 #include <ctype.h>
 #include <wctype.h>
 #include <stdio.h>
@@ -91,6 +90,7 @@ C99, POSIX-1.2008
 
 #ifdef INTEGER_ONLY
 #define VFWSCANF vfiwscanf
+__typeof(vfwscanf) vfiwscanf;
 #ifdef STRING_ONLY
 #  define _SVFWSCANF _ssvfiwscanf
 #else
@@ -494,7 +494,11 @@ _SVFWSCANF (
 
   _newlib_flockfile_start (fp);
 
-  ORIENT (fp, 1);
+  if (ORIENT (fp, 1) != 1)
+    {
+      nassigned = EOF;
+      goto all_done;
+    }
 
   nassigned = 0;
   nread = 0;

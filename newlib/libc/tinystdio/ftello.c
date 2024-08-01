@@ -33,10 +33,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdio.h>
-#include <errno.h>
-
-#define FSEEK_TYPE __off_t
-#define ftell ftello
+#define FTELL_TYPE __off_t
+#define FTELL ftello
 
 #include "ftell.c"

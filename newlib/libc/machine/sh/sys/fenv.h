@@ -31,12 +31,10 @@
 #ifndef _SYS_FENV_H_
 #define _SYS_FENV_H_ 1
 
-#include <sys/_types.h>
 #include <sys/cdefs.h>
+#include <sys/_types.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+_BEGIN_STD_C
 
 typedef int fenv_t;
 typedef int fexcept_t;
@@ -74,10 +72,22 @@ typedef int fexcept_t;
 #define	FE_TONEAREST		0x0000
 #define	FE_TOWARDZERO		0x0001
 
+#else
+#define	FE_TONEAREST		0x0000
 #endif
 
-#ifdef __cplusplus
-}
+#if !defined(__declare_fenv_inline) && defined(__declare_extern_inline)
+#define	__declare_fenv_inline(type) __declare_extern_inline(type)
 #endif
+
+#ifdef __declare_fenv_inline
+#ifdef __SH_FPU_ANY__
+#include <machine/fenv-fp.h>
+#else
+#include <machine/fenv-softfloat.h>
+#endif
+#endif
+
+_END_STD_C
 
 #endif	/* _SYS_FENV_H_ */ 

@@ -90,15 +90,13 @@ requires <<mkstemp>> while deprecating <<mktemp>>.  <<mkstemps>>, and
 Supporting OS subroutines required: <<open>>
 */
 
-#define _DEFAULT_SOURCE
-#include <_ansi.h>
-#include <stdlib.h>
-#include <sys/types.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <string.h>
+#include "stdio_private.h"
+
+/* Our names are six characters from [0-9a-z] */
+#define NUM_NAMES       (36UL * 36UL * 36UL * 36UL * 36UL * 36UL)
+
+/* Attempts */
+#define NUM_ATTEMPT     (36UL * 36UL * 36UL)
 
 static int
 _gettemp (char *path,
@@ -108,6 +106,7 @@ _gettemp (char *path,
 {
   char *start, *trv;
   char *end;
+  uint32_t attempt;
 
   end = path + strlen(path) - suffixlen;
   trv = end;
@@ -125,8 +124,26 @@ _gettemp (char *path,
 
   start = trv + 1;
 
-  for (;;)
+  for (attempt = 0; attempt < NUM_ATTEMPT; attempt++)
     {
+      /* Generate a random filename index */
+      long filename = random() % NUM_NAMES;
+      size_t i;
+
+      /* Convert the random index into characters */
+      for (i = 0; i < 6; i++)
+        {
+          char c = filename % 36;
+          filename /= 36;
+
+          if (c < 10)
+            c += '0';
+          else
+            c += 'a' - 10;
+
+          start[i] = c;
+        }
+
       /*
        * Use open to check if the file exists to avoid depending on
        * stat or access. Don't rely on O_EXCL working, although if it
@@ -153,22 +170,8 @@ _gettemp (char *path,
         }
       } else
         close(fd);
-
-      /* Increment the string of letters to generate another name */
-      trv = start;
-      for(;;)
-	{
-	  if (trv == end)
-	    return 0;
-	  if (*trv == 'z')
-	    *trv++ = 'a';
-	  else {
-            ++ * trv;
-            break;
-          }
-	}
     }
-  /*NOTREACHED*/
+  return 0;
 }
 
 int

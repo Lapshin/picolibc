@@ -406,7 +406,7 @@ Supporting OS subroutines required: <<close>>, <<fstat>>, <<isatty>>,
 */
 
 #define _DEFAULT_SOURCE
-#include <_ansi.h>
+#include <sys/cdefs.h>
 #include <stdio.h>
 #include <wchar.h>
 #include <stdarg.h>
@@ -420,6 +420,7 @@ swscanf (const wchar_t *__restrict str, const wchar_t *__restrict fmt, ...)
   FILE f;
 
   f._flags = __SRD | __SSTR;
+  f._flags2 = 0;
   f._bf._base = f._p = (unsigned char *) str;
   f._bf._size = f._r = wcslen (str) * sizeof (wchar_t);
   f._read = __seofread;

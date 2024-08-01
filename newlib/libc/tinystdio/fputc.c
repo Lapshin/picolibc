@@ -29,9 +29,7 @@
 
 /* $Id: fputc.c 1944 2009-04-01 23:12:20Z arcanum $ */
 
-#include <stdio.h>
 #include "stdio_private.h"
-#include <sys/cdefs.h>
 
 int
 fputc(int c, FILE *stream)
@@ -39,14 +37,20 @@ fputc(int c, FILE *stream)
 	if ((stream->flags & __SWR) == 0)
 		return EOF;
 
-	if (stream->put(c, stream) < 0)
+	if (stream->put(c, stream) < 0) {
+                stream->flags |= __SERR;
 		return EOF;
+        }
 
 	return (unsigned char) c;
 }
 
+#undef putc
+#undef putc_unlocked
 #ifdef _HAVE_ALIAS_ATTRIBUTE
 __strong_reference(fputc, putc);
-#elif !defined(getc)
+__strong_reference(fputc, putc_unlocked);
+#else
 int putc(int c, FILE *stream) { return fputc(c, stream); }
+int putc_unlocked(int c, FILE *stream) { return fputc(c, stream); }
 #endif

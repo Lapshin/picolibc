@@ -29,7 +29,7 @@
 
 /* $Id: getchar.c 1944 2009-04-01 23:12:20Z arcanum $ */
 
-#include <stdio.h>
+#include "stdio_private.h"
 
 #undef getchar
 
@@ -39,3 +39,10 @@ getchar(void)
 
 	return getc(stdin);
 }
+
+#undef getchar_unlocked
+#ifdef _HAVE_ALIAS_ATTRIBUTE
+__strong_reference(getchar, getchar_unlocked);
+#else
+int getchar_unlocked(void) { return getchar(); }
+#endif

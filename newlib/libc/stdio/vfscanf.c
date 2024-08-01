@@ -75,8 +75,7 @@ Supporting OS subroutines required:
 */
 
 #define _DEFAULT_SOURCE
-#include <_ansi.h>
-#include <newlib.h>
+#include <sys/cdefs.h>
 #include <ctype.h>
 #include <wctype.h>
 #include <stdio.h>
@@ -320,7 +319,7 @@ _ssrefill (
 }
 
 size_t
-sfread (
+_sfread (
        void *buf,
        size_t size,
        size_t count,
@@ -568,7 +567,11 @@ _SVFSCANF (
 
   _newlib_flockfile_start (fp);
 
-  ORIENT (fp, -1);
+  if (ORIENT (fp, -1) != -1)
+    {
+      nassigned = EOF;
+      goto all_done;
+    }
 
   nassigned = 0;
   nread = 0;

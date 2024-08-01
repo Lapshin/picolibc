@@ -27,10 +27,7 @@
   POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <stdio.h>
 #include "stdio_private.h"
-#include <sys/cdefs.h>
-#include <wchar.h>
 
 wint_t
 fgetwc(FILE *stream)
@@ -42,6 +39,8 @@ fgetwc(FILE *stream)
         unsigned i;
         int sc;
         __ungetc_t unget;
+        
+        stream->flags |= __SWIDE;
 
 	if ((stream->flags & __SRD) == 0)
 		return WEOF;

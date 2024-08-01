@@ -1,3 +1,4 @@
+/* From: @(#)s_floor.c 5.1 93/09/24 */
 /*
  * ====================================================
  * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
@@ -8,7 +9,6 @@
  * is preserved.
  * ====================================================
  *
- * From: @(#)s_floor.c 5.1 93/09/24
  */
 
 /*
@@ -21,9 +21,9 @@
  */
 
 #ifdef LDBL_IMPLICIT_NBIT
-#define	MANH_SIZE	(EXT_FRACHBITS + EXT_FRACHMBITS + 1)
+#define	MANH_SIZE	(LDBL_MANH_SIZE + 1)
 #else
-#define	MANH_SIZE	(EXT_FRACHBITS + EXT_FRACHMBITS)
+#define	MANH_SIZE	(LDBL_MANH_SIZE)
 #endif
 
 static const long double huge = 1.0e300L;

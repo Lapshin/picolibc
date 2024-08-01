@@ -33,17 +33,10 @@
 /* From: Id: printf_p_new.c,v 1.1.1.9 2002/10/15 20:10:28 joerg_wunsch Exp */
 /* $Id: vfprintf.c 2191 2010-11-05 13:45:57Z arcanum $ */
 
-#define _DEFAULT_SOURCE
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <math.h>
 #include "stdio_private.h"
 #include "../../libm/common/math_config.h"
 
 #ifdef WIDE_CHARS
-#include <wchar.h>
 #define CHAR wchar_t
 #define UCHAR wchar_t
 #define vfprintf vfwprintf
@@ -69,7 +62,7 @@
 
 #ifndef PRINTF_LEVEL
 #  define PRINTF_LEVEL PRINTF_DBL
-#  ifndef FORMAT_DEFAULT_DOUBLE
+#  ifndef _FORMAT_DEFAULT_DOUBLE
 #    define vfprintf __d_vfprintf
 #  endif
 #endif
@@ -127,6 +120,9 @@
 # if __SIZEOF_LONG_LONG__ > __SIZEOF_LONG__
 #  define _NEED_IO_LONG_LONG
 # endif
+# if defined(_HAS_IO_WCHAR) || defined(WIDE_CHARS)
+#  define _NEED_IO_WCHAR
+# endif
 # define _NEED_IO_POS_ARGS
 # define _NEED_IO_C99_FORMATS
 # ifdef _WANT_IO_PERCENT_B
@@ -138,6 +134,16 @@
 # endif
 #else
 # error invalid PRINTF_LEVEL
+#endif
+
+/* Figure out which multi-byte char support we need */
+#if defined(_NEED_IO_WCHAR) && defined(_MB_CAPABLE)
+# ifdef WIDE_CHARS
+/* need to convert multi-byte chars to wide chars */
+#  define _NEED_IO_MBTOWIDE
+# else
+#  define _NEED_IO_WIDETOMB
+# endif
 #endif
 
 #if PRINTF_LEVEL >= PRINTF_FLT
@@ -399,9 +405,9 @@ skip_to_arg(const CHAR *fmt_orig, my_va_list *ap, int target_argno)
         if (argno == 0)
             break;
         if (argno == current_argno) {
-            if ((TOLOW(c) >= 'e' && TOLOW(c) <= 'g')
+            if ((TOLOWER(c) >= 'e' && TOLOWER(c) <= 'g')
 #ifdef _NEED_IO_C99_FORMATS
-                || TOLOW(c) == 'a'
+                || TOLOWER(c) == 'a'
 #endif
                 ) {
                 SKIP_FLOAT_ARG(flags, ap->ap);
@@ -423,6 +429,54 @@ skip_to_arg(const CHAR *fmt_orig, my_va_list *ap, int target_argno)
 }
 #endif
 
+#ifdef _NEED_IO_WIDETOMB
+/*
+ * Compute the number of bytes to encode a wide string
+ * in the current locale
+ */
+static size_t
+_mbslen(const wchar_t *s, size_t maxlen)
+{
+    mbstate_t ps = {0};
+    wchar_t c;
+    char tmp[MB_LEN_MAX];
+    size_t len = 0;
+    while (len < maxlen && (c = *s++) != L'\0') {
+        size_t clen;
+        clen = wcrtomb(tmp, c, &ps);
+        if (clen == (size_t) -1)
+            return clen;
+        len += clen;
+    }
+    return len;
+}
+
+#endif
+
+#ifdef _NEED_IO_MBTOWIDE
+/*
+ * Compute the number of wide chars to encode a multi-byte string
+ * in the current locale
+ */
+static size_t
+_wcslen(const char *s, size_t maxlen)
+{
+    mbstate_t ps = {0};
+    wchar_t c;
+    size_t len = 0;
+    while (len < maxlen && *s != '\0') {
+        size_t clen = mbrtowc(&c, s, MB_LEN_MAX, &ps);
+        if (c == L'\0')
+            break;
+        if (clen == (size_t) -1)
+            return clen;
+        s += clen;
+        len++;
+    }
+    return len;
+}
+#endif
+
 int vfprintf (FILE * stream, const CHAR *fmt, va_list ap_orig)
 {
     unsigned c;		/* holds a char from the format string */
@@ -439,6 +493,9 @@ int vfprintf (FILE * stream, const CHAR *fmt, va_list ap_orig)
 #endif
     union {
 	char __buf[PRINTF_BUF_SIZE];	/* size for -1 in smallest base, without '\0'	*/
+#ifdef _NEED_IO_WCHAR
+        wchar_t __wbuf[PRINTF_BUF_SIZE/2]; /* for wide char output */
+#endif
 #if PRINTF_LEVEL >= PRINTF_FLT
 	struct dtoa __dtoa;
 #endif
@@ -449,13 +506,18 @@ int vfprintf (FILE * stream, const CHAR *fmt, va_list ap_orig)
 #endif
 
 #define buf	(u.__buf)
+#define wbuf    (u.__wbuf)
 #define dtoa	(u.__dtoa)
 
     int stream_len = 0;
 
 #ifndef my_putc
+#ifdef WIDE_CHARS
+#define my_putc(c, stream) do { ++stream_len; if (putwc(c, stream) == WEOF) goto fail; } while(0)
+#else
     int (*put)(char, FILE *) = stream->put;
 #define my_putc(c, stream) do { ++stream_len; if (put(c, stream) < 0) goto fail; } while(0)
+#endif
 #endif
 
     if ((stream->flags & __SWR) == 0)
@@ -615,9 +677,9 @@ int vfprintf (FILE * stream, const CHAR *fmt, va_list ap_orig)
 #define TOCASE(c)       ((c) - case_convert)
 
 #ifndef _NEED_IO_SHRINK
-	if ((TOLOW(c) >= 'e' && TOLOW(c) <= 'g')
+	if ((TOLOWER(c) >= 'e' && TOLOWER(c) <= 'g')
 #ifdef _NEED_IO_C99_FORMATS
-            || TOLOW(c) == 'a'
+            || TOLOWER(c) == 'a'
 #endif
             )
         {
@@ -630,8 +692,8 @@ int vfprintf (FILE * stream, const CHAR *fmt, va_list ap_orig)
 	    uint8_t ndigs_exp;		/* number of digis in exponent */
 
             /* deal with upper vs lower case */
-            case_convert = TOLOW(c) - c;
-            c = TOLOW(c);
+            case_convert = TOLOWER(c) - c;
+            c = TOLOWER(c);
 
 #ifdef _NEED_IO_LONG_DOUBLE
             if ((flags & (FL_LONG | FL_REPD_TYPE)) == (FL_LONG | FL_REPD_TYPE))
@@ -701,8 +763,9 @@ int vfprintf (FILE * stream, const CHAR *fmt, va_list ap_orig)
                     if (!(flags & FL_PREC))
                         prec = -1;
 
-                    prec = __float_x_engine(fval, &dtoa, prec, case_convert);
-                    ndigs = prec + 1;
+                    ndigs = 1 + __float_x_engine(fval, &dtoa, prec, case_convert);
+                    if (prec <= ndigs)
+                        prec = ndigs - 1;
                     exp = dtoa.exp;
                     ndigs_exp = 1;
                 } else
@@ -920,20 +983,12 @@ int vfprintf (FILE * stream, const CHAR *fmt, va_list ap_orig)
                         }
                         my_putc (out, stream);
                     } while (1);
-                    if (n == exp
-                        && (dtoa.digits[0] > '5'
-                            || (dtoa.digits[0] == '5' && !(dtoa.flags & DTOA_CARRY))) )
-                    {
-                        out = '1';
-                    }
                     my_putc (out, stream);
                     if ((flags & FL_ALT) && n == -1)
 			my_putc('.', stream);
                 } else {				/* 'e(E)' format	*/
 
                     /* mantissa	*/
-                    if (dtoa.digits[0] != '1')
-                        dtoa.flags &= ~DTOA_CARRY;
                     my_putc (dtoa.digits[0], stream);
                     if (prec > 0) {
                         my_putc ('.', stream);
@@ -946,7 +1001,7 @@ int vfprintf (FILE * stream, const CHAR *fmt, va_list ap_orig)
                     /* exponent	*/
                     my_putc (TOCASE(c), stream);
                     sign = '+';
-                    if (exp < 0 || (exp == 0 && (dtoa.flags & DTOA_CARRY) != 0)) {
+                    if (exp < 0) {
                         exp = -exp;
                         sign = '-';
                     }
@@ -984,37 +1039,42 @@ int vfprintf (FILE * stream, const CHAR *fmt, va_list ap_orig)
 #endif /* ifndef PRINT_SHRINK */
         {
             int buf_len;
-#ifdef WIDE_CHARS
-            CHAR *wstr = NULL;
-            CHAR c_arg;
-
+#ifdef _NEED_IO_WCHAR
+            wchar_t *wstr = NULL;
             pnt = NULL;
 #endif
 
             if (c == 'c') {
-#ifdef WIDE_CHARS
-                c_arg = va_arg (ap, int);
-                if (!(flags & FL_LONG))
-                    c_arg = (char) c_arg;
-                wstr = &c_arg;
-                size = 1;
-                goto str_lpad;
-#else
 #ifdef _NEED_IO_SHRINK
                 my_putc(va_arg(ap, int), stream);
 #else
+#ifdef _NEED_IO_WCHAR
+                if (flags & FL_LONG) {
+                    wbuf[0] = va_arg (ap, wint_t);
+                    wbuf[1] = L'\0';
+                    wstr = wbuf;
+                    goto wstr_lpad;
+                }
+#endif
                 buf[0] = va_arg (ap, int);
                 pnt = buf;
                 size = 1;
                 goto str_lpad;
 #endif
-#endif
             } else if (c == 's') {
-#ifdef WIDE_CHARS
+#ifdef _NEED_IO_WCHAR
                 if (flags & FL_LONG) {
-                    wstr = va_arg(ap, CHAR *);
+                    wstr = va_arg(ap, wchar_t *);
                     if (wstr) {
-                        size = wcsnlen(wstr, (flags & FL_PREC) ? (size_t) prec : SIZE_MAX);
+                    wstr_lpad:
+                        size = (flags & FL_PREC) ? (size_t) prec : SIZE_MAX;
+#ifdef _NEED_IO_WIDETOMB
+                        size = _mbslen(wstr, size);
+                        if (size == (size_t) -1)
+                            goto ret;
+#else
+                        size = wcsnlen(wstr, size);
+#endif
                         goto str_lpad;
                     }
                 } else
@@ -1027,8 +1087,12 @@ int vfprintf (FILE * stream, const CHAR *fmt, va_list ap_orig)
                 while ( (c = *pnt++) )
                     my_putc(c, stream);
 #else
-                size = strnlen (pnt, (flags & FL_PREC) ? (size_t) prec : SIZE_MAX);
-
+                size = (flags & FL_PREC) ? (size_t) prec : SIZE_MAX;
+#ifdef _NEED_IO_MBTOWIDE
+                size = _wcslen (pnt, size);
+#else
+                size = strnlen (pnt, size);
+#endif
             str_lpad:
                 if (!(flags & FL_LPAD)) {
                     while ((size_t) width > size) {
@@ -1037,16 +1101,47 @@ int vfprintf (FILE * stream, const CHAR *fmt, va_list ap_orig)
                     }
                 }
                 width -= size;
-                while (size--) {
-#ifdef WIDE_CHARS
-                    if (wstr)
+#ifdef _NEED_IO_WCHAR
+                if (wstr) {
+#ifdef _NEED_IO_WIDETOMB
+                    mbstate_t   ps = {0};
+                    while(size) {
+                        wchar_t c = *wstr++;
+                        char mb[MB_LEN_MAX], *m;
+                        size_t mb_len = wcrtomb(mb, c, &ps);
+                        m = mb;
+                        while (size && mb_len) {
+                            my_putc(*m++, stream);
+                            size--;
+                            mb_len--;
+                        }
+                    }
+#else
+                    while(size--)
                         my_putc(*wstr++, stream);
-                    else
 #endif
+                } else
+#endif
+                {
+#ifdef _NEED_IO_MBTOWIDE
+                    mbstate_t   ps = {0};
+                    while (size--) {
+                        wchar_t c;
+                        size_t mb_len = mbrtowc(&c, pnt, MB_LEN_MAX, &ps);
+                        my_putc(c, stream);
+                        pnt += mb_len;
+                    }
+#else
+                    while (size--)
                         my_putc (*pnt++, stream);
+#endif
                 }
 #endif
-
+#ifdef _PRINTF_PERCENT_N
+            } else if (c == 'n') {
+                int *n_ptr = va_arg(ap, int *);
+                *n_ptr = stream_len;
+#endif
             } else {
                 if (c == 'd' || c == 'i') {
                     ultoa_signed_t x_s;
@@ -1082,10 +1177,10 @@ int vfprintf (FILE * stream, const CHAR *fmt, va_list ap_orig)
                         c = 'x';
                         if (sizeof(void *) > sizeof(int))
                             flags |= FL_LONG;
-                    } else if (TOLOW(c) == 'x') {
+                    } else if (TOLOWER(c) == 'x') {
                         base = ('x' - c) | 16;
 #ifdef _NEED_IO_PERCENT_B
-                    } else if (TOLOW(c) == 'b') {
+                    } else if (TOLOWER(c) == 'b') {
                         base = 2;
 #endif
                     } else {
@@ -1210,11 +1305,12 @@ int vfprintf (FILE * stream, const CHAR *fmt, va_list ap_orig)
 #undef my_putc
 #undef ap
   fail:
+    stream->flags |= __SERR;
     stream_len = -1;
     goto ret;
 }
 
-#if defined(FORMAT_DEFAULT_DOUBLE) && !defined(vfprintf)
+#if defined(_FORMAT_DEFAULT_DOUBLE) && !defined(vfprintf)
 #ifdef _HAVE_ALIAS_ATTRIBUTE
 __strong_reference(vfprintf, __d_vfprintf);
 #else

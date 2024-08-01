@@ -33,7 +33,8 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 subdir('sys')
-install_headers('stdio.h',
+inc_headers = ['stdio.h']
+install_headers(inc_headers,
 		install_dir: include_dir)
 
 general_srcs_stdio = [
@@ -88,6 +89,15 @@ general_srcs_stdio = [
   'setbuffer.c',
   'setlinebuf.c',
   'setvbuf.c',
+  'sfputs.c',
+  'sfputws.c',
+  'sprint.c',
+  'ssprint.c',
+  'ssputs.c',
+  'ssputws.c',
+  'sswprint.c',
+  'swprint.c',
+  'wbufw.c',
   'snprintf.c',
   'sprintf.c',
   'sscanf.c',
@@ -289,3 +299,13 @@ foreach file : srcs_stdio
 endforeach
 
 src_stdio = files(srcs_stdio_use)
+
+if enable_cdefs_tests
+  foreach header : inc_headers
+    test_name = 'check-cdef-' + header
+    test(test_name,
+         validate_cdefs,
+         args: [meson.current_source_dir() / header] + cc.cmd_array() + c_args + inc_args,
+         suite: 'headers')
+  endforeach
+endif

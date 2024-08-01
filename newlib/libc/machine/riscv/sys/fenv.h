@@ -12,6 +12,7 @@
 #ifndef _SYS_FENV_H
 #define _SYS_FENV_H
 
+#include <sys/cdefs.h>
 #include <stddef.h>
 
 #if defined(__riscv_flen) || defined(__riscv_zfinx)
@@ -61,6 +62,8 @@
 #define FE_TONEAREST  	0x00000000
 
 #define FE_RMODE_MASK   0x7
+#else
+#define FE_TONEAREST	0
 #endif
 
 /* Per "The RISC-V Instruction Set Manual: Volume I: User-Level ISA:
@@ -74,5 +77,17 @@
 
 typedef size_t fenv_t;
 typedef size_t fexcept_t;
+
+#if !defined(__declare_fenv_inline) && defined(__declare_extern_inline)
+#define	__declare_fenv_inline(type) __declare_extern_inline(type)
+#endif
+
+#ifdef __declare_fenv_inline
+#if defined(__riscv_flen) || defined(__riscv_zfinx)
+#include <machine/fenv-fp.h>
+#else
+#include <machine/fenv-softfloat.h>
+#endif
+#endif
 
 #endif /* _SYS_FENV_H */

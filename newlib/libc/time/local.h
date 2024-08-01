@@ -3,10 +3,11 @@
 #ifndef _DEFAULT_SOURCE
 #define _DEFAULT_SOURCE
 #endif
-#include <_ansi.h>
+#include <sys/cdefs.h>
 #include <time.h>
 #include <sys/_tz_structs.h>
 #include <sys/lock.h>
+#include <stdint.h>
 
 #define SECSPERMIN	60L
 #define MINSPERHOUR	60L

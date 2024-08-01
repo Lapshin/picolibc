@@ -24,8 +24,8 @@
  * SUCH DAMAGE.
  */
 
-#define _DEFAULT_SOURCE
-#include <_ansi.h>
+#define _GNU_SOURCE
+#include <sys/cdefs.h>
 #include <stdio.h>
 #include <wchar.h>
 #include "local.h"
@@ -34,6 +34,7 @@ wint_t
 fgetwc_unlocked (
 	register FILE *fp)
 {
-  ORIENT(fp, 1);
+  if (ORIENT(fp, 1) != 1)
+    return WEOF;
   return __fgetwc (fp);
 }

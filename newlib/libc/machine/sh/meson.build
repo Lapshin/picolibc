@@ -45,5 +45,6 @@ srcs_machine = [
 ]
 
 subdir('sys')
+subdir('machine')
 
 src_machine = files(srcs_machine)

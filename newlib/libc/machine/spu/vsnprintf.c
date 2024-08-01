@@ -27,7 +27,9 @@ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
  */
-#include <_ansi.h>
+#include <picolibc.h>
+
+#include <sys/cdefs.h>
 #include <stdio.h>
 
 #include "c99ppe.h"

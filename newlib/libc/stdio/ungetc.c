@@ -62,7 +62,7 @@ static char sccsid[] = "%W% (Berkeley) %G%";
 #endif /* LIBC_SCCS and not lint */
 
 #define _DEFAULT_SOURCE
-#include <_ansi.h>
+#include <sys/cdefs.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -124,8 +124,6 @@ ungetc (
   CHECK_INIT (rptr, fp);
 
   _newlib_flockfile_start (fp);
-
-  ORIENT (fp, -1);
 
   /* After ungetc, we won't be at eof anymore */
   fp->_flags &= ~__SEOF;

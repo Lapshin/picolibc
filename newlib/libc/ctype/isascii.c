@@ -64,15 +64,12 @@ PORTABILITY
 
 No supporting OS subroutines are required.
 */
-#include <_ansi.h>
+#define _DEFAULT_SOURCE
 #include <ctype.h>
 
-
-
 #undef isascii
-
-int 
+int
 isascii (int c)
 {
-	return c >= 0 && c< 128;
+    return (unsigned) c <= 0177;
 }

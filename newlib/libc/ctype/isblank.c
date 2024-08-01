@@ -36,12 +36,15 @@ PORTABILITY
 No supporting OS subroutines are required.
 */
 
-#define _DEFINING_ISBLANK
-#include <_ansi.h>
 #include <ctype.h>
 
+#undef isblank
 int
 isblank (int c)
 {
-	return c == ' ' || c == '\t';
+#if _PICOLIBC_CTYPE_SMALL
+    return c == ' ' || c == '\t';
+#else
+    return(__CTYPE_PTR[c+1] & _B) || c == '\t';
+#endif
 }

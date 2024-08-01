@@ -15,16 +15,10 @@
 // is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 // KIND, either express or implied.
 
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-
 #include "stdio_private.h"
 
 #ifdef RYU_DEBUG
 #include <inttypes.h>
-#include <stdio.h>
 #endif
 
 #include "ryu/common.h"
@@ -75,6 +69,7 @@ __atof_engine(uint32_t m10, int e10)
 	printf("e10digits = %d\n", e10);
 	printf("m10 * 10^e10 = %lu * 10^%d\n", m10, e10);
 #endif
+#define signedM 0
 
 	// Convert to binary float m2 * 2^e2, while retaining information about whether the conversion
 	// was exact (trailingZeros).
@@ -126,15 +121,15 @@ __atof_engine(uint32_t m10, int e10)
 	}
 
 #ifdef RYU_DEBUG
-	printf("m2 * 2^e2 = %lu * 2^%ld\n", m2, e2);
+	printf("m2 * 2^e2 = %lu * 2^%d\n", m2, e2);
 #endif
 
 	// Compute the final IEEE exponent.
 	uint32_t ieee_e2 = (uint32_t) max32(0, e2 + FLOAT_EXPONENT_BIAS + floor_log2(m2));
 
 	if (ieee_e2 > 0xfe) {
-		// Final IEEE exponent is larger than the maximum representable; return Infinity.
-		uint32_t ieee = ((uint32_t)0xffu << FLOAT_MANTISSA_BITS);
+		// Final IEEE exponent is larger than the maximum representable; return +/-Infinity.
+                uint32_t ieee = (((uint32_t) signedM) << (FLOAT_EXPONENT_BITS + FLOAT_MANTISSA_BITS)) | ((uint32_t) 0xffu << FLOAT_MANTISSA_BITS);
 		return int32Bits2Float(ieee);
 	}
 
@@ -162,14 +157,14 @@ __atof_engine(uint32_t m10, int e10)
 	printf("ieee_m2 = %lu\n", (m2 >> shift) + roundUp);
 #endif
 	uint32_t ieee_m2 = (m2 >> shift) + roundUp;
-        assert(ieee_m2 <= (1u << (FLOAT_MANTISSA_BITS + 1)));
-        ieee_m2 &= ((uint32_t)1u << FLOAT_MANTISSA_BITS) - 1;
-        if (ieee_m2 == 0 && roundUp) {
-            // Rounding up may overflow the mantissa.
-            // In this case we move a trailing zero of the mantissa into the exponent.
+	assert(ieee_m2 <= (1u << (FLOAT_MANTISSA_BITS + 1)));
+	ieee_m2 &= ((uint32_t)1u << FLOAT_MANTISSA_BITS) - 1;
+	if (ieee_m2 == 0 && roundUp) {
+		// Rounding up may overflow the mantissa.
+		// In this case we move a trailing zero of the mantissa into the exponent.
 		// Due to how the IEEE represents +/-Infinity, we don't need to check for overflow here.
 		ieee_e2++;
 	}
-	uint32_t ieee = (((uint32_t)ieee_e2) << FLOAT_MANTISSA_BITS) | ieee_m2;
+	uint32_t ieee = (((((uint32_t) signedM) << FLOAT_EXPONENT_BITS) | (uint32_t)ieee_e2) << FLOAT_MANTISSA_BITS) | ieee_m2;
 	return int32Bits2Float(ieee);
 }

@@ -49,8 +49,8 @@ Required OS subroutines: <<close>>, <<fstat>>, <<isatty>>, <<lseek>>,
 */
 /* This file based upon fwalk.c. */
 
-#define _DEFAULT_SOURCE
-#include <_ansi.h>
+#define _GNU_SOURCE
+#include <sys/cdefs.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>

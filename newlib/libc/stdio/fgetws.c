@@ -85,8 +85,8 @@ PORTABILITY
 <<fgetws_unlocked>> is a GNU extension.
 */
 
-#define _DEFAULT_SOURCE
-#include <_ansi.h>
+#define _GNU_SOURCE
+#include <sys/cdefs.h>
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
@@ -110,7 +110,8 @@ fgetws (
   unsigned char *nl;
 
   _newlib_flockfile_start (fp);
-  ORIENT (fp, 1);
+  if (ORIENT (fp, 1) != 1)
+    goto error;
 
   if (n <= 0)
     {

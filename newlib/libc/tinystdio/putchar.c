@@ -29,7 +29,7 @@
 
 /* $Id: putchar.c 1944 2009-04-01 23:12:20Z arcanum $ */
 
-#include <stdio.h>
+#include "stdio_private.h"
 
 #undef putchar
 
@@ -38,3 +38,10 @@ putchar(int c)
 {
 	return putc(c, stdout);
 }
+
+#undef putchar_unlocked
+#ifdef _HAVE_ALIAS_ATTRIBUTE
+__strong_reference(putchar, putchar_unlocked);
+#else
+int putchar_unlocked(int c) { return putchar(c); }
+#endif

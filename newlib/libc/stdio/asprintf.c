@@ -17,8 +17,8 @@
 /* This code was copied from sprintf.c */
 /* doc in sprintf.c */
 
-#define _DEFAULT_SOURCE
-#include <_ansi.h>
+#define _GNU_SOURCE
+#include <sys/cdefs.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <limits.h>
@@ -34,6 +34,7 @@ asprintf (char **__restrict strp,
 
   /* mark a zero-length reallocatable buffer */
   f._flags = __SWR | __SSTR | __SMBF;
+  f._flags2 = 0;
   f._bf._base = f._p = NULL;
   f._bf._size = f._w = 0;
   f._file = -1;  /* No file. */

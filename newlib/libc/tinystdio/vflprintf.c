@@ -30,15 +30,17 @@
 
 */
 
+#include "stdio_private.h"
+
 #define PICOLIBC_LONG_LONG_PRINTF_SCANF
 #define PRINTF_LEVEL PRINTF_LLONG
-#ifndef FORMAT_DEFAULT_LONG_LONG
+#ifndef _FORMAT_DEFAULT_LONG_LONG
 #define vfprintf __l_vfprintf
 #endif
 
 #include "vfprintf.c"
 
-#ifdef FORMAT_DEFAULT_LONG_LONG
+#ifdef _FORMAT_DEFAULT_LONG_LONG
 #ifdef _HAVE_ALIAS_ATTRIBUTE
 __strong_reference(vfprintf, __l_vfprintf);
 #else

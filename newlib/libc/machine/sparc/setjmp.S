@@ -41,6 +41,8 @@
  * from: $Header$
  */
 
+#include <picolibc.h>
+
 #if defined(LIBC_SCCS) && !defined(lint)
         .asciz "@(#)_setjmp.s   8.1 (Berkeley) 6/4/93"
 #endif /* LIBC_SCCS and not lint */
@@ -111,7 +113,8 @@
 ENTRY(setjmp)
 ENTRY(_setjmp)
 #ifndef _FLAT
-	ta	0x03		/* flush registers */
+        ta      0x03            /* Flush registers, just in case another stack
+                                   is used after the setjmp().  */
 #endif
         st      %sp, [%o0]      /* caller's stack pointer */
         st      %i7, [%o0+4]    /* caller's return pc */

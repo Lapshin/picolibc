@@ -33,19 +33,13 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdio-bufio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <stdbool.h>
+#include "stdio_private.h"
 
-/* Buffered I/O routines for tiny stdio */
-
-static int
+int
 __bufio_flush_locked(FILE *f)
 {
 	struct __file_bufio *bf = (struct __file_bufio *) f;
         char *buf;
-        int ret = 0;
         off_t backup;
 
         switch (bf->dir) {
@@ -53,10 +47,10 @@ __bufio_flush_locked(FILE *f)
 		/* Flush everything, drop contents if that doesn't work */
                 buf = bf->buf;
 		while (bf->len) {
-                        ssize_t this = (bf->write) (bf->fd, buf, bf->len);
+                        ssize_t this = bufio_write(bf, buf, bf->len);
 			if (this <= 0) {
                                 bf->len = 0;
-                                ret = -1;
+                                return _FDEV_ERR;
                                 break;
 			}
 			bf->pos += this;
@@ -68,8 +62,7 @@ __bufio_flush_locked(FILE *f)
                 backup = bf->len - bf->off;
                 if (backup) {
                         bf->pos -= backup;
-                        if (bf->lseek)
-                                (void) (bf->lseek)(bf->fd, bf->pos, SEEK_SET);
+                        (void) bufio_lseek(bf, bf->pos, SEEK_SET);
                 }
                 bf->len = 0;
                 bf->off = 0;
@@ -77,7 +70,31 @@ __bufio_flush_locked(FILE *f)
         default:
                 break;
 	}
-	return ret;
+	return 0;
+}
+
+
+int __bufio_fill_locked(FILE *f)
+{
+	struct __file_bufio *bf = (struct __file_bufio *) f;
+        ssize_t len;
+
+        /* Reset read pointer, read some data */
+        bf->off = 0;
+        len = bufio_read (bf, bf->buf, bf->size);
+
+        if (len <= 0) {
+                bf->len = 0;
+                if (len < 0)
+                        return _FDEV_ERR;
+                else
+                        return _FDEV_EOF;
+        }
+
+        /* Update FD pos */
+        bf->len = len;
+        bf->pos += len;
+        return 0;
 }
 
 int
@@ -92,7 +109,7 @@ __bufio_flush(FILE *f)
 }
 
 /* Set I/O direction, flushing when it changes */
-static int
+int
 __bufio_setdir_locked(FILE *f, uint8_t dir)
 {
 	struct __file_bufio *bf = (struct __file_bufio *) f;
@@ -129,6 +146,9 @@ bail:
 	return ret;
 }
 
+extern FILE *const stdin _ATTRIBUTE((__weak__));
+extern FILE *const stdout _ATTRIBUTE((__weak__));
+
 int
 __bufio_get(FILE *f)
 {
@@ -145,26 +165,26 @@ again:
 
 	if (bf->off >= bf->len) {
 
-		/* Flush stdout if reading from stdin */
-		if (f == stdin && !flushed) {
+		/*
+                 * Flush stdout if reading from stdin.
+                 *
+                 * The odd-looking NULL address checks along with the
+                 * weak attributes for stdin and stdout above avoids
+                 * pulling in stdin/stdout definitions just for this
+                 * check.
+                 */
+                if (!flushed) {
                         flushed = true;
-			__bufio_unlock(f);
-			fflush(stdout);
-                        goto again;
+                        if (&stdin != NULL && &stdout != NULL && f == stdin) {
+                                __bufio_unlock(f);
+                                fflush(stdout);
+                                goto again;
+                        }
 		}
 
-		/* Reset read pointer, read some data */
-		bf->off = 0;
-		bf->len = (bf->read)(bf->fd, bf->buf, bf->size);
-
-		if (bf->len <= 0) {
-			bf->len = 0;
-                        ret = _FDEV_EOF;
-                        goto bail;
-		}
-
-                /* Update FD pos */
-                bf->pos += bf->len;
+                ret = __bufio_fill_locked(f);
+                if (ret)
+                    goto bail;
 	}
 
 	/*
@@ -184,18 +204,36 @@ __bufio_seek(FILE *f, off_t offset, int whence)
 	off_t ret;
 
 	__bufio_lock(f);
-        if (__bufio_setdir_locked(f, 0) < 0)
-                return _FDEV_ERR;
-        if (bf->lseek) {
-                if (whence == SEEK_CUR) {
-                        whence = SEEK_SET;
-                        offset += bf->pos;
-                }
-                ret = (bf->lseek)(bf->fd, offset, whence);
-        } else
+        if (__bufio_setdir_locked(f, __SRD) < 0) {
                 ret = _FDEV_ERR;
-        if (ret >= 0)
-                bf->pos = ret;
+        } else {
+                /* compute offset of the first char in the buffer */
+                __off_t buf_pos = bf->pos - bf->len;
+
+                switch (whence) {
+                case SEEK_CUR:
+                        /* Map CUR -> SET, accounting for position within buffer */
+                        whence = SEEK_SET;
+                        offset += buf_pos + bf->off;
+                        __PICOLIBC_FALLTHROUGH;
+                case SEEK_SET:
+                        /* Optimize for seeks within buffer or just past buffer */
+                        if (buf_pos <= offset && offset <= buf_pos + bf->len) {
+                                bf->off = offset - buf_pos;
+                                ret = offset;
+                                break;
+                        }
+                        __PICOLIBC_FALLTHROUGH;
+                default:
+                        ret = bufio_lseek(bf, offset, whence);
+                        if (ret >= 0)
+                                bf->pos = ret;
+                        /* Flush any buffered data after a real seek */
+                        bf->len = 0;
+                        bf->off = 0;
+                        break;
+                }
+        }
         __bufio_unlock(f);
         return ret;
 }
@@ -262,10 +300,16 @@ __bufio_close(FILE *f)
                 free(bf->buf);
 
 	__bufio_lock_close(f);
-	/* Don't close stdin/stdout/stderr fds */
-	if (bf->fd > 2)
-		(bf->close)(bf->fd);
-	free(f);
+
+        /*
+         * Don't close the fd or free the FILE for things not
+         * generated by fopen or fdopen. These will usually be static
+         * FILE structs defined for stdin/stdout/stderr.
+         */
+        if (bf->bflags & __BFALL) {
+                ret = bufio_close(bf);
+                free(f);
+        }
 	return ret;
 }
 

@@ -21,7 +21,7 @@ static char sccsid[] = "%W% (Berkeley) %G%";
 #endif /* LIBC_SCCS and not lint */
 
 #define _DEFAULT_SOURCE
-#include <_ansi.h>
+#include <sys/cdefs.h>
 #include <stdio.h>
 #include <limits.h>
 #include <stdarg.h>
@@ -45,6 +45,7 @@ vsnprintf (
       return EOF;
     }
   f._flags = __SWR | __SSTR;
+  f._flags2 = 0;
   f._bf._base = f._p = (unsigned char *) str;
   f._bf._size = f._w = (size > 0 ? size - 1 : 0);
   f._file = -1;  /* No file. */

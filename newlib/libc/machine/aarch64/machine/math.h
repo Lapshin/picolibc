@@ -36,17 +36,23 @@
 #ifndef _MACHINE_MATH_H_
 #define _MACHINE_MATH_H_
 
+#if __ARM_FP & 0x8
 #define _HAVE_FAST_FMA 1
-#define _HAVE_FAST_FMAF 1
+#endif
 
-#if defined(_HAVE_ATTRIBUTE_ALWAYS_INLINE) && defined(_HAVE_ATTRIBUTE_GNU_INLINE)
-#define __declare_aarch64_macro(type) extern __inline type __attribute((gnu_inline, always_inline))
+#if __ARM_FP & 0x4
+#define _HAVE_FAST_FMAF 1
+#endif
+
+#ifdef __declare_extern_inline
 
 #ifdef _WANT_MATH_ERRNO
 #include <errno.h>
 #endif
 
-__declare_aarch64_macro(double)
+#if __ARM_FP & 0x8
+
+__declare_extern_inline(double)
 sqrt (double x)
 {
     double result;
@@ -58,7 +64,18 @@ sqrt (double x)
     return result;
 }
 
-__declare_aarch64_macro(float)
+__declare_extern_inline(double)
+fma (double x, double y, double z)
+{
+    double result;
+    __asm__ __volatile__ ("fmadd\t%d0, %d1, %d2, %d3" : "=w" (result) : "w" (x), "w" (y), "w" (z));
+    return result;
+}
+
+#endif /* __ARM_FP & 0x8 */
+
+#if __ARM_FP & 0x4
+__declare_extern_inline(float)
 sqrtf (float x)
 {
     float result;
@@ -70,15 +87,7 @@ sqrtf (float x)
     return result;
 }
 
-__declare_aarch64_macro(double)
-fma (double x, double y, double z)
-{
-    double result;
-    __asm__ __volatile__ ("fmadd\t%d0, %d1, %d2, %d3" : "=w" (result) : "w" (x), "w" (y), "w" (z));
-    return result;
-}
-
-__declare_aarch64_macro(float)
+__declare_extern_inline(float)
 fmaf (float x, float y, float z)
 {
     float result;
@@ -86,6 +95,7 @@ fmaf (float x, float y, float z)
     return result;
 }
 
+#endif /* __ARM_FP & 0x4 */
 #endif
 
 #endif /* _MACHINE_MATH_H_ */

@@ -64,7 +64,8 @@ POSIX-1.2008.
 No supporting OS subroutines are required.
 */
 
-#include <_ansi.h>
+#define _GNU_SOURCE
+#include <sys/cdefs.h>
 #include <ctype.h>
 #undef toascii
 

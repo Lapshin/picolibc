@@ -47,7 +47,8 @@ PORTABILITY
  * SUCH DAMAGE.
  */
 
-#include <_ansi.h>
+#define _DEFAULT_SOURCE
+#include <sys/cdefs.h>
 #include <sys/types.h>
 #include <wchar.h>
 

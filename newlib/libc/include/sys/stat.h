@@ -29,15 +29,61 @@ SUCH DAMAGE.
 #ifndef	_SYS_STAT_H
 #define	_SYS_STAT_H
 
-#ifdef __cplusplus
-extern "C" {
+#include <sys/cdefs.h>
+#include <sys/_types.h>
+#include <sys/_timespec.h>
+
+_BEGIN_STD_C
+
+#ifndef _BLKCNT_T_DECLARED
+typedef	__blkcnt_t	blkcnt_t;
+#define	_BLKCNT_T_DECLARED
 #endif
 
-#include <_ansi.h>
-#include <time.h>
-#include <sys/cdefs.h>
-#include <sys/types.h>
-#include <sys/_timespec.h>
+#ifndef _BLKSIZE_T_DECLARED
+typedef	__blksize_t	blksize_t;
+#define	_BLKSIZE_T_DECLARED
+#endif
+
+#ifndef _DEV_T_DECLARED
+typedef	__dev_t		dev_t;		/* device number or struct cdev */
+#define	_DEV_T_DECLARED
+#endif
+
+#ifndef _INO_T_DECLARED
+typedef	__ino_t		ino_t;		/* inode number */
+#define	_INO_T_DECLARED
+#endif
+
+#ifndef _MODE_T_DECLARED
+typedef	__mode_t	mode_t;		/* permissions */
+#define	_MODE_T_DECLARED
+#endif
+
+#ifndef _NLINK_T_DECLARED
+typedef	__nlink_t	nlink_t;	/* link count */
+#define	_NLINK_T_DECLARED
+#endif
+
+#ifndef _UID_T_DECLARED
+typedef	__uid_t		uid_t;		/* user id */
+#define	_UID_T_DECLARED
+#endif
+
+#ifndef _GID_T_DECLARED
+typedef	__gid_t		gid_t;		/* group id */
+#define	_GID_T_DECLARED
+#endif
+
+#ifndef _OFF_T_DECLARED
+typedef	__off_t		off_t;		/* file offset */
+#define	_OFF_T_DECLARED
+#endif
+
+#ifndef _TIME_T_DECLARED
+typedef	_TIME_T_	time_t;
+#define	_TIME_T_DECLARED
+#endif
 
 /* dj's stat defines _STAT_H_ */
 #ifndef _STAT_H_
@@ -46,12 +92,6 @@ extern "C" {
    sizes of any of the basic types change (short, int, long) [via a compile
    time option].  */
 
-#ifdef __CYGWIN__
-#include <cygwin/stat.h>
-#ifdef _LIBC
-#define stat64 stat
-#endif
-#else
 struct	stat 
 {
   dev_t		st_dev;
@@ -107,13 +147,65 @@ struct	stat
 #endif
 };
 
+#if __LARGEFILE64_VISIBLE
+struct stat64
+{
+  __dev_t st_dev;		/* Device.  */
+#  ifdef __x86_64__
+  __ino64_t st_ino;		/* File serial number.  */
+  __nlink_t st_nlink;		/* Link count.  */
+  __mode_t st_mode;		/* File mode.  */
+#  else
+  unsigned int __pad1;
+  __ino_t __st_ino;			/* 32bit file serial number.	*/
+  __mode_t st_mode;			/* File mode.  */
+  __nlink_t st_nlink;			/* Link count.  */
+#  endif
+  __uid_t st_uid;		/* User ID of the file's owner.	*/
+  __gid_t st_gid;		/* Group ID of the file's group.*/
+#  ifdef __x86_64__
+  int __pad0;
+  __dev_t st_rdev;		/* Device number, if device.  */
+  __off_t st_size;		/* Size of file, in bytes.  */
+#  else
+  __dev_t st_rdev;			/* Device number, if device.  */
+  unsigned int __pad2;
+  __off64_t st_size;			/* Size of file, in bytes.  */
+#  endif
+  __blksize_t st_blksize;	/* Optimal block size for I/O.  */
+  __blkcnt64_t st_blocks;	/* Nr. 512-byte blocks allocated.  */
+#if defined(__svr4__) && !defined(__PPC__) && !defined(__sun__)
+  __time_t st_atime;			/* Time of last access.  */
+  __syscall_ulong_t st_atimensec;	/* Nscecs of last access.  */
+  __time_t st_mtime;			/* Time of last modification.  */
+  __syscall_ulong_t st_mtimensec;	/* Nsecs of last modification.  */
+  __time_t st_ctime;			/* Time of last status change.  */
+  __syscall_ulong_t st_ctimensec;	/* Nsecs of last status change.  */
+#else
+  /* Nanosecond resolution timestamps are stored in a format
+     equivalent to 'struct timespec'.  This is the type used
+     whenever possible but the Unix namespace rules do not allow the
+     identifier 'timespec' to appear in the <sys/stat.h> header.
+     Therefore we have to handle the use of this header in strictly
+     standard-compliant sources special.  */
+  struct timespec st_atim;		/* Time of last access.  */
+  struct timespec st_mtim;		/* Time of last modification.  */
+  struct timespec st_ctim;		/* Time of last status change.  */
+#  endif
+#  ifdef __x86_64__
+  __int64_t __glibc_reserved[3];
+#  else
+  __ino64_t st_ino;			/* File serial number.		*/
+#  endif
+};
+#endif
+
 #if !(defined(__svr4__) && !defined(__PPC__) && !defined(__sun__))
 #define st_atime st_atim.tv_sec
 #define st_ctime st_ctim.tv_sec
 #define st_mtime st_mtim.tv_sec
 #endif
 
-#endif
 
 #define	_IFMT		0170000	/* type of file */
 #define		_IFDIR	0040000	/* directory */
@@ -199,12 +291,17 @@ int	mkfifo (const char *__path, mode_t __mode );
 int	stat (const char *__restrict __path, struct stat *__restrict __sbuf );
 mode_t	umask (mode_t __mask );
 
+#if __LARGEFILE64_VISIBLE
+int	stat64 (const char *__restrict __path, struct stat64 *__restrict __sbuf );
+int	fstat64 (int __fd, struct stat64 *__sbuf );
+#endif
+
 #if defined (__SPU__) || defined(__rtems__) || defined(__CYGWIN__)
 int	lstat (const char *__restrict __path, struct stat *__restrict __buf );
 int	mknod (const char *__path, mode_t __mode, dev_t __dev );
 #endif
 
-#if __ATFILE_VISIBLE && !defined(__INSIDE_CYGWIN__)
+#if __ATFILE_VISIBLE
 int	fchmodat (int, const char *, mode_t, int);
 int	fstatat (int, const char *__restrict , struct stat *__restrict, int);
 int	mkdirat (int, const char *, mode_t);
@@ -212,25 +309,12 @@ int	mkfifoat (int, const char *, mode_t);
 int	mknodat (int, const char *, mode_t, dev_t);
 int	utimensat (int, const char *, const struct timespec [2], int);
 #endif
-#if __POSIX_VISIBLE >= 200809 && !defined(__INSIDE_CYGWIN__)
+#if __POSIX_VISIBLE >= 200809
 int	futimens (int, const struct timespec [2]);
 #endif
 
-/* Provide prototypes for most of the _<systemcall> names that are
-   provided in newlib for some compilers.  */
-#ifdef _LIBC
-int	_fstat (int __fd, struct stat *__sbuf );
-int	_stat (const char *__restrict __path, struct stat *__restrict __sbuf );
-int	_mkdir (const char *_path, mode_t __mode );
-#ifdef __LARGE64_FILES
-struct stat64;
-int	_stat64 (const char *__restrict __path, struct stat64 *__restrict __sbuf );
-int	_fstat64 (int __fd, struct stat64 *__sbuf );
-#endif
-#endif
-
 #endif /* !_STAT_H_ */
-#ifdef __cplusplus
-}
-#endif
+
+_END_STD_C
+
 #endif /* _SYS_STAT_H */

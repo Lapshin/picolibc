@@ -81,7 +81,7 @@ Supporting OS subroutines required: <<close>>, <<fstat>>, <<isatty>>,
 */
 
 #define _DEFAULT_SOURCE
-#include <_ansi.h>
+#include <sys/cdefs.h>
 #include <stdio.h>
 #include <string.h>
 #include <malloc.h>
@@ -159,7 +159,11 @@ fread (
   CHECK_INIT(ptr, fp);
 
   _newlib_flockfile_start (fp);
-  ORIENT (fp, -1);
+  if (ORIENT (fp, -1) != -1)
+    {
+      count = 0;
+      goto ret;
+    }
   if (fp->_r < 0)
     fp->_r = 0;
   total = resid;
@@ -253,6 +257,7 @@ fread (
       return crlf_r(ptr, fp, buf, total, 0) / size;
     }
 #endif
+ret:
   _newlib_flockfile_end (fp);
   return count;
 }

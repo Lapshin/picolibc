@@ -58,12 +58,12 @@ SUCH DAMAGE.
 typedef __WINT_TYPE__ wint_t;
 #endif
 
-#include <newlib.h>
 #include <sys/config.h>
 #include <machine/_types.h>
 
 #ifndef __machine_blkcnt_t_defined
 typedef long __blkcnt_t;
+typedef __int64_t __blkcnt64_t;
 #endif
 
 #ifndef __machine_blksize_t_defined
@@ -122,6 +122,7 @@ typedef unsigned long __ino_t;
 #else
 typedef unsigned short __ino_t;
 #endif
+typedef __uint64_t      __ino64_t;
 #endif
 
 #ifndef __machine_mode_t_defined
@@ -144,11 +145,8 @@ typedef __uint32_t __mode_t;
 __extension__ typedef long long _off64_t;
 #endif
 
-#if defined(__CYGWIN__) && !defined(__LP64__)
-typedef _off64_t __off_t;
-#else
 typedef _off_t __off_t;
-#endif
+typedef __uint64_t __off64_t;
 
 typedef _off64_t __loff_t;
 
@@ -165,10 +163,8 @@ typedef long _fpos_t;		/* XXX must match off_t in <sys/types.h> */
 				/* (and must be `long' for now) */
 #endif
 
-#ifdef __LARGE64_FILES
 #ifndef __machine_fpos64_t_defined
 typedef _off64_t _fpos64_t;
-#endif
 #endif
 
 /* Defined by GCC provided <stddef.h> */

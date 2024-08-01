@@ -29,7 +29,6 @@
 
 /* $Id: fgets.c 1944 2009-04-01 23:12:20Z arcanum $ */
 
-#include <stdio.h>
 #include "stdio_private.h"
 
 char *
@@ -43,8 +42,12 @@ fgets(char *str, int size, FILE *stream)
 
 	size--;
 	for (c = 0, cp = str; c != '\n' && size > 0; size--, cp++) {
-		if ((c = getc(stream)) == EOF)
-			return NULL;
+		if ((c = getc(stream)) == EOF) {
+			if(cp == str)
+				return NULL;
+			else
+				break;
+		}
 		*cp = (char)c;
 	}
 	*cp = '\0';

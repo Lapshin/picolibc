@@ -30,7 +30,8 @@ PORTABILITY
 No supporting OS subroutines are required.
 */
 
-#include <_ansi.h>
+#define _DEFAULT_SOURCE
+#include <sys/cdefs.h>
 #include <wchar.h>
 
 wchar_t *

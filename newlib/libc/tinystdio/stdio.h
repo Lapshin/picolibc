@@ -39,17 +39,13 @@
 #ifndef _STDIO_H_
 #define	_STDIO_H_ 1
 
-#include "_ansi.h"
-
+#include <sys/cdefs.h>
 #define __need_NULL
 #define __need_size_t
-#define __need_ssize_t
-#include <sys/cdefs.h>
 #include <stddef.h>
-
 #include <inttypes.h>
 #include <stdarg.h>
-#include <sys/types.h>
+#include <sys/_types.h>
 
 /*
  * This is an internal structure of the library that is subject to be
@@ -130,10 +126,14 @@ struct __file_ext {
    \c FILE is the opaque structure that is passed around between the
    various standard IO functions.
 */
+#ifndef ___FILE_DECLARED
 typedef struct __file __FILE;
-#if !defined(__FILE_defined)
-typedef __FILE FILE;
 # define __FILE_defined
+#endif
+
+#ifndef _FILE_DECLARED
+typedef __FILE FILE;
+#define _FILE_DECLARED
 #endif
 
 /**
@@ -299,15 +299,40 @@ int	ferror(FILE *__stream);
 #define FILENAME_MAX 1024
 #endif
 
-__extension__ typedef _fpos_t fpos_t;
-int fgetpos(FILE *stream, fpos_t *pos);
+/*
+ * Declare required C types
+ *
+ * size_t comes from stddef.h (included from cdefs.h)
+ */
+typedef _fpos_t fpos_t;
+
+#if __POSIX_VISIBLE
+/*
+ * Declare required additional POSIX types.
+ *
+ * va_list comes from stdarg.h (included above)
+ */
+
+# ifndef _OFF_T_DECLARED
+typedef	__off_t		off_t;		/* file offset */
+# define _OFF_T_DECLARED
+# endif
+
+# ifndef _SSIZE_T_DECLARED
+typedef _ssize_t ssize_t;
+# define _SSIZE_T_DECLARED
+# endif
+
+#endif
+
+int fgetpos(FILE * __restrict stream, fpos_t * __restrict pos);
 FILE *fopen(const char *path, const char *mode) __malloc_like_with_free(fclose, 1);
 FILE *freopen(const char *path, const char *mode, FILE *stream);
 FILE *fdopen(int, const char *) __malloc_like_with_free(fclose, 1);
 FILE *fmemopen(void *buf, size_t size, const char *mode) __malloc_like_with_free(fclose, 1);
 int fseek(FILE *stream, long offset, int whence);
 int fseeko(FILE *stream, __off_t offset, int whence);
-int fsetpos(FILE *stream, fpos_t *pos);
+int fsetpos(FILE *stream, const fpos_t *pos);
 long ftell(FILE *stream);
 __off_t ftello(FILE *stream);
 int fileno(FILE *);
@@ -321,8 +346,34 @@ void setlinebuf(FILE *stream);
 int setvbuf(FILE *stream, char *buf, int mode, size_t size);
 FILE *tmpfile(void);
 char *tmpnam (char *s);
-ssize_t getline(char **__restrict lineptr, size_t *__restrict n, FILE *__restrict stream);
-ssize_t getdelim(char **__restrict lineptr, size_t *__restrict  n, int delim, FILE *__restrict stream);
+_ssize_t getline(char **__restrict lineptr, size_t *__restrict n, FILE *__restrict stream);
+_ssize_t getdelim(char **__restrict lineptr, size_t *__restrict  n, int delim, FILE *__restrict stream);
+
+#if __BSD_VISIBLE
+FILE	*funopen (const void *cookie,
+		_ssize_t (*readfn)(void *cookie, void *buf,
+				size_t n),
+		_ssize_t (*writefn)(void *cookie, const void *buf,
+				 size_t n),
+		__off_t (*seekfn)(void *cookie, __off_t off, int whence),
+		int (*closefn)(void *cookie));
+# define	fropen(__cookie, __fn) funopen(__cookie, __fn, NULL, NULL, NULL)
+# define	fwopen(__cookie, __fn) funopen(__cookie, NULL, __fn, NULL, NULL)
+#endif /*__BSD_VISIBLE */
+
+#if __POSIX_VISIBLE >= 199309L
+int	getc_unlocked (FILE *);
+int	getchar_unlocked (void);
+void	flockfile (FILE *);
+int	ftrylockfile (FILE *);
+void	funlockfile (FILE *);
+int	putc_unlocked (int, FILE *);
+int	putchar_unlocked (int);
+#define getc_unlocked(f) fgetc(f)
+#define getchar_unlocked(f) fgetc(stdin)
+#define putc_unlocked(c, f) fputc(c, f)
+#define putchar_unlocked(c, f) fgetc(c, stdin)
+#endif
 
 /*
  * The format of tmpnam names is TXXXXXX, which works with mktemp
@@ -423,6 +474,12 @@ __printf_float(float f)
 # define _HAS_IO_POS_ARGS
 # define _HAS_IO_C99_FORMATS
 # define _HAS_IO_DOUBLE
+# if defined(_MB_CAPABLE) || defined(_WANT_IO_WCHAR)
+#  define _HAS_IO_WCHAR
+# endif
+# ifdef _MB_CAPABLE
+#  define _HAS_IO_MBCHAR
+# endif
 # ifdef _WANT_IO_PERCENT_B
 #  define _HAS_IO_PERCENT_B
 # endif

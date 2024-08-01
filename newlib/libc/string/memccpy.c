@@ -28,7 +28,8 @@ PORTABILITY
 
 	*/
 
-#include <_ansi.h>
+#define _DEFAULT_SOURCE
+#include <sys/cdefs.h>
 #include <stddef.h>
 #include <string.h>
 #include <limits.h>

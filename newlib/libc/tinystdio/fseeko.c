@@ -33,10 +33,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "stdio_private.h"
-#include <errno.h>
-
+#define FSEEK fseeko
 #define FSEEK_TYPE __off_t
-#define fseek fseeko
 
 #include "fseek.c"

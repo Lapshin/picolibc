@@ -46,6 +46,7 @@ picolibc_headers(sys
   fenv.h
   file.h
   iconvnls.h
+  _initfini.h
   _intsup.h
   _locale.h
   lock.h
@@ -73,4 +74,5 @@ picolibc_headers(sys
   unistd.h
   utime.h
   wait.h
+  _wait.h
   )

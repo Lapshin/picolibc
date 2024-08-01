@@ -412,15 +412,13 @@ Supporting OS subroutines required: <<close>>, <<fstat>>, <<isatty>>,
 */
 
 #define _DEFAULT_SOURCE
-#include <_ansi.h>
+#include <sys/cdefs.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
 #include "local.h"
 
-#ifndef _REENT_ONLY 
-
-int 
+int
 sscanf (const char *__restrict str,
        const char * fmt, ...)
 {
@@ -429,6 +427,7 @@ sscanf (const char *__restrict str,
   FILE f;
 
   f._flags = __SRD | __SSTR;
+  f._flags2 = 0;
   f._bf._base = f._p = (unsigned char *) str;
   f._bf._size = f._r = strlen (str);
   f._read = __seofread;
@@ -446,5 +445,3 @@ int __nonnull((1)) _NOTHROW
 siscanf (const char *, const char *, ...)
        _ATTRIBUTE ((__alias__("sscanf")));
 #endif
-
-#endif /* !_REENT_ONLY */

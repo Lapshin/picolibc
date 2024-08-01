@@ -31,15 +31,15 @@
 
 #include <sys/cdefs.h>
 
-#ifdef _SOFT_FLOAT
-typedef int fenv_t;
-typedef int fexcept_t;
-#else
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+#ifdef _SOFT_FLOAT
+typedef int fenv_t;
+typedef int fexcept_t;
+#define FE_TONEAREST	(0)
+#else
 
 /* Primary sources:
 
@@ -153,19 +153,23 @@ extern const fenv_t *_fe_nomask_env;
 #define FE_NOMASK_ENV (_fe_nomask_env)
 #endif
 
-#ifdef __CYGWIN__
 
-#if __MISC_VISIBLE
-int fegetprec (void);
-int fesetprec (int __prec);
+#endif /* !_SOFT_FLOAT */
+
+#ifdef _SOFT_FLOAT
+
+#if !defined(__declare_fenv_inline) && defined(__declare_extern_inline)
+#define	__declare_fenv_inline(type) __declare_extern_inline(type)
 #endif
 
-#endif /* __CYGWIN__ */
+#ifdef __declare_fenv_inline
+#include <machine/fenv-softfloat.h>
+#endif
+
+#endif
 
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* !_SOFT_FLOAT */
 
 #endif /* _FENV_H */

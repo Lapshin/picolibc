@@ -4,9 +4,12 @@
  * Copyright (c) 2010-2019 Red Hat, Inc.
  */
 
-#ifndef _SOFT_FLOAT
+#ifdef _SOFT_FLOAT
+#include "../../fenv/fenv.c"
+#else
 
 #define _GNU_SOURCE        // for FE_NOMASK_ENV
+#define __STDC_WANT_IEC_60559_BFP_EXT__
 
 #include <fenv.h>
 #include <errno.h>
@@ -282,6 +285,29 @@ feraiseexcept (int excepts)
   return 0;
 }
 
+/*  This function sets the supported exceptions indicated by
+   excepts.  The function returns
+   zero in case the operation was successful, a non-zero value otherwise.  */
+int
+fesetexcept (int excepts)
+{
+  fenv_t fenv;
+
+  if (excepts & ~FE_ALL_EXCEPT)
+    return EINVAL;
+
+  /* Need to save/restore whole environment to modify status word.  */
+  __asm__ volatile ("fnstenv %0" : "=m" (fenv) : );
+
+  /* Set desired exception bits.  */
+  fenv._fpu._fpu_sw |= excepts;
+
+  /* Set back into FPU state.  */
+  __asm__ volatile ("fldenv %0" :: "m" (fenv));
+
+  return 0;
+}
+
 /*  Test whether the exception flags indicated by the parameter except
    are currently set. If any of them are, a nonzero value is returned
    which specifies which exceptions are set. Otherwise the result is zero.  */
@@ -396,59 +422,6 @@ fesetround (int round)
   return 0;
 }
 
-#if defined(__CYGWIN__)
-/*  Returns the currently selected precision, represented by one of the
-   values of the defined precision macros.  */
-int
-fegetprec (void)
-{
-  unsigned short cw;
-
-  /* Get control word.  */
-  __asm__ volatile ("fnstcw %0" : "=m" (cw) : );
-
-  return (cw & FE_CW_PREC_MASK) >> FE_CW_PREC_SHIFT;
-}
-
-/* http://www.open-std.org/jtc1/sc22//WG14/www/docs/n752.htm:
-
-   The fesetprec function establishes the precision represented by its
-   argument prec.  If the argument does not match a precision macro, the
-   precision is not changed.
-
-   The fesetprec function returns a nonzero value if and only if the
-   argument matches a precision macro (that is, if and only if the requested
-   precision can be established). */
-int
-fesetprec (int prec)
-{
-  unsigned short cw;
-
-  /* Will succeed for any valid value of the input parameter.  */
-  switch (prec)
-    {
-    case FE_FLTPREC:
-    case FE_DBLPREC:
-    case FE_LDBLPREC:
-      break;
-    default:
-      return 0;
-    }
-
-  /* Get control word.  */
-  __asm__ volatile ("fnstcw %0" : "=m" (cw) : );
-
-  /* Twiddle bits.  */
-  cw &= ~FE_CW_PREC_MASK;
-  cw |= (prec << FE_CW_PREC_SHIFT);
-
-  /* Set back into FPU state.  */
-  __asm__ volatile ("fldcw %0" :: "m" (cw));
-
-  /* Indicate success.  */
-  return 1;
-}
-#endif
 
 /*  Set up the FPU and SSE environment at the start of execution.  */
 static void

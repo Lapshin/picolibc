@@ -30,14 +30,16 @@
 
 */
 
+#include "stdio_private.h"
+
 #define SCANF_LEVEL SCANF_LLONG
-#ifndef FORMAT_DEFAULT_LONG_LONG
+#ifndef _FORMAT_DEFAULT_LONG_LONG
 #define vfscanf __l_vfscanf
 #endif
 
 #include "vfscanf.c"
 
-#ifdef FORMAT_DEFAULT_LONG_LONG
+#ifdef _FORMAT_DEFAULT_LONG_LONG
 #ifdef _HAVE_ALIAS_ATTRIBUTE
 __strong_reference(vfscanf, __l_vfscanf);
 #else

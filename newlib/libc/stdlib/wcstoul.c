@@ -115,8 +115,8 @@ PORTABILITY
  * SUCH DAMAGE.
  */
 
-#define _DEFAULT_SOURCE
-#include <_ansi.h>
+#define _GNU_SOURCE
+#include <sys/cdefs.h>
 #include <limits.h>
 #include <wctype.h>
 #include <wchar.h>
@@ -127,7 +127,6 @@ PORTABILITY
 /*
  * Convert a wide string to an unsigned long integer.
  */
-#ifndef _REENT_ONLY
 
 unsigned long
 wcstoul_l (const wchar_t *nptr, wchar_t **endptr,
@@ -196,5 +195,3 @@ wcstoul (const wchar_t *__restrict s,
 {
 	return wcstoul_l (s, ptr, base, __get_current_locale ());
 }
-
-#endif

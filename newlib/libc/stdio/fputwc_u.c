@@ -24,8 +24,8 @@
  * SUCH DAMAGE.
  */
 
-#define _DEFAULT_SOURCE
-#include <_ansi.h>
+#define _GNU_SOURCE
+#include <sys/cdefs.h>
 #include <stdio.h>
 #include <wchar.h>
 #include "local.h"
@@ -35,6 +35,5 @@ fputwc_unlocked (
 	wchar_t wc,
 	FILE *fp)
 {
-  ORIENT(fp, 1);
   return __fputwc(wc, fp);
 }

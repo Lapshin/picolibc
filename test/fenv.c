@@ -33,6 +33,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#define _GNU_SOURCE
 #include <fenv.h>
 #include <math.h>
 #include <stdio.h>
@@ -66,7 +67,7 @@ volatile test_t zero = 0.0;
 volatile test_t two = 2.0;
 volatile test_t huge = huge_val;
 volatile test_t tiny = tiny_val;
-volatile test_t inf = INFINITY;
+volatile test_t inf = (test_t) INFINITY;
 
 #define lowbit(x) 	((x) & -(x))
 #define ispoweroftwo(x)	(((x) & ((x) - 1)) == 0)
@@ -149,7 +150,7 @@ report(char *expr, test_t v, int e, int exception, int oexception)
         e &= (my_inexact | my_divbyzero | my_underflow | my_overflow | my_invalid);
 	printf("%-20.20s: ", expr);
 	printf("%8g ", (double) v);
-	printf("(e expect %s", e_to_str(exception));
+	printf("expect %s", e_to_str(exception));
 	if (oexception)
 		printf(" or %s", e_to_str(oexception));
 	printf(" got %s\n", e_to_str(e));
@@ -158,10 +159,7 @@ report(char *expr, test_t v, int e, int exception, int oexception)
 	{
 		return 0;
 	}
-	printf("\tgot %s expecting %s", e_to_str(e), e_to_str(exception));
-	if (oexception)
-		printf(" or %s", e_to_str(oexception));
-	printf("\n");
+	printf("\tFAILURE\n");
 	return 1;
 }
 
@@ -181,9 +179,32 @@ report(char *expr, test_t v, int e, int exception, int oexception)
 			TEST_CASE2(expr, exception, 0);			\
 	} while(0)
 
+static const struct {
+    const char *name;
+    int value;
+} excepts[] = {
+    { .name = "None", .value = 0 },
+#if FE_DIVBYZERO
+    { .name = "Divide by zero", .value = FE_DIVBYZERO },
+#endif
+#if FE_OVERFLOW
+    { .name = "Overflow", .value = FE_OVERFLOW },
+#endif
+#if FE_UNDERFLOW
+    { .name = "Underflow", .value = FE_UNDERFLOW },
+#endif
+#if FE_INVALID
+    { .name = "Invalid", .value = FE_INVALID },
+#endif
+};
+
+#define NUM_EXCEPTS (sizeof(excepts)/sizeof(excepts[0]))
+
 int main(void)
 {
 	int result = 0;
+        int ret;
+        unsigned i;
 
 	(void) report;
 	(void) e_to_str;
@@ -212,5 +233,22 @@ int main(void)
 		TEST_CASE(test_sqrt(-two), FE_INVALID);
 #endif
 	}
+
+	feclearexcept(FE_ALL_EXCEPT);
+        for (i = 0; i < NUM_EXCEPTS; i++) {
+            ret = feenableexcept(excepts[i].value);
+            if (ret == 0) {
+                ret = fedisableexcept(excepts[i].value);
+                if (ret != excepts[i].value) {
+                    printf("enable %s worked, disabled returned %d\n", excepts[i].name, ret);
+                    result = 1;
+                }
+            } else {
+                if (excepts[i].value == 0) {
+                    printf("enable %s returned %d", excepts[i].name, ret);
+                    result = 1;
+                }
+            }
+        }
 	return result;
 }

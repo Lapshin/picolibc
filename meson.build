@@ -42,7 +42,7 @@ project('picolibc', 'c',
 	],
 	license : 'BSD',
 	meson_version : '>= 0.53',
-	version: '1.8.5'
+	version: '1.8.6'
        )
 
 targets = []
@@ -95,6 +95,8 @@ cpu_family_aliases = {
 		       'm88110' : 'm88k',
 		       # Microblaze
 		       'microblazeel' : 'microblaze',
+		       # mips
+		       'mips64' : 'mips',
 		       # or1k
 		       'or1knd': 'or1k',
 		       # powerpc
@@ -147,18 +149,35 @@ have_long_double = cc.compiles(long_double_code, name : 'long double check', arg
 
 enable_multilib = get_option('multilib')
 multilib_list = get_option('multilib-list')
+multilib_exclude = get_option('multilib-exclude')
 enable_picolib = get_option('picolib')
 enable_picocrt = get_option('picocrt')
 enable_picocrt_lib = get_option('picocrt-lib')
 enable_semihost = get_option('semihost')
 enable_tests = get_option('tests')
+if get_option('tests-cdefs') == 'auto'
+  enable_cdefs_tests = enable_tests
+else
+  enable_cdefs_tests = get_option('tests-cdefs') == 'true'
+endif
 enable_native_tests = get_option('native-tests')
+enable_native_math_tests = enable_native_tests and get_option('native-math-tests')
 tests_enable_stack_protector = get_option('tests-enable-stack-protector')
 tests_enable_full_malloc_stress = get_option('tests-enable-full-malloc-stress')
 tests_enable_posix_io = get_option('tests-enable-posix-io')
 have_alias_attribute_option = get_option('have-alias-attribute')
 have_format_attribute_option = get_option('have-format-attribute')
 have_weak_attribute_option = get_option('have-weak-attribute')
+
+# C++ is only used in tests, so only check for it when tests are enabled
+if enable_tests
+  have_cplusplus = add_languages('cpp', required: false)
+  if have_cplusplus
+    cpp = meson.get_compiler('cpp')
+  endif
+else
+  have_cplusplus = false
+endif
 
 newlib_iconv_encodings = get_option('newlib-iconv-encodings')
 newlib_iconv_encodings_exclude = get_option('newlib-iconv-encodings-exclude')
@@ -171,8 +190,8 @@ newlib_nano_malloc = get_option('newlib-nano-malloc')
 lite_exit = get_option('lite-exit')
 
 newlib_elix_level = get_option('newlib-elix-level')
-c_args = ['-include', '@0@/@1@'.format(meson.current_build_dir(), 'picolibc.h')] + core_c_args
-native_c_args = ['-DNO_NEWLIB']
+c_args = core_c_args
+native_common_args = ['-DNO_NEWLIB']
 
 if get_option('profile')
   c_args += ['-pg', '-no-pie']
@@ -182,10 +201,19 @@ if get_option('freestanding')
   c_args += ['-ffreestanding']
 endif
 
+if have_cplusplus
+  cpp_args = c_args
+  cpp_flags = cpp.get_supported_arguments(['-fno-common', '-frounding-math', '-fsignaling-nans',
+				           '-Wno-unsupported-floating-point-opt',
+				           '-fno-builtin-copysignl'])
+  cpp_args += cpp_flags
+  native_cpp_args = native_common_args + cpp_flags
+endif
+
 # Disable ssp and fortify source while building picolibc (it's enabled
 # by default by the ubuntu native compiler)
 c_flags = cc.get_supported_arguments(['-fno-common', '-frounding-math', '-fsignaling-nans',
-				      '-Wno-unsupported-floating-point-opt', '-fno-stack-protector',
+				      '-Wno-unsupported-floating-point-opt',
 				      '-fno-builtin-copysignl'])
 
 c_sanitize_bounds_flags = cc.get_supported_arguments(['-fsanitize=bounds'])
@@ -193,7 +221,7 @@ c_sanitize_trap_flags = cc.get_supported_arguments(['-fsanitize-undefined-trap-o
 c_sanitize_no_trap_flags = cc.get_supported_arguments(['-fno-sanitize-undefined-trap-on-error', '-static-libubsan'])
 have_ubsan = c_sanitize_bounds_flags != []
 c_args += c_flags
-native_c_args += c_flags
+native_c_args = native_common_args + c_flags
 
 sanitize_bounds = get_option('sanitize-bounds')
 sanitize_trap_on_error = get_option('sanitize-trap-on-error')
@@ -237,6 +265,10 @@ if nm.found()
   duplicate_names = find_program('scripts/duplicate-names', required : true)
 endif
 
+if enable_cdefs_tests
+  validate_cdefs = find_program ('scripts/validate-cdefs', required : true)
+endif
+
 # Select exit code
 picoexit = get_option('picoexit')
 
@@ -275,12 +307,17 @@ posix_console = tinystdio and get_option('posix-console')
 posix_io = tinystdio and (get_option('posix-io') or posix_console)
 io_float_exact = not tinystdio or get_option('io-float-exact')
 atomic_ungetc = tinystdio and get_option('atomic-ungetc')
+atomic_signal = get_option('atomic-signal')
 format_default = get_option('format-default')
 printf_aliases = get_option('printf-aliases')
 io_percent_b = tinystdio and get_option('io-percent-b')
 io_long_double = get_option('io-long-double') or get_option('newlib-io-long-double')
 printf_small_ultoa = tinystdio and get_option('printf-small-ultoa')
+printf_percent_n = tinystdio and get_option('printf-percent-n')
 minimal_io_long_long = tinystdio and get_option('minimal-io-long-long')
+fast_bufio = tinystdio and get_option('fast-bufio')
+io_wchar = tinystdio and get_option('io-wchar')
+
 
 if printf_aliases
   double_printf_compile_args=['-DPICOLIBC_DOUBLE_PRINTF_SCANF']
@@ -300,20 +337,6 @@ float_printf_link_args=float_printf_compile_args
 llong_printf_link_args=llong_printf_compile_args
 int_printf_link_args=int_printf_compile_args
 min_printf_link_args=min_printf_compile_args
-
-if tinystdio
-  if format_default == 'double'
-    c_args += '-DFORMAT_DEFAULT_DOUBLE'
-  elif format_default == 'float'
-    c_args += '-DFORMAT_DEFAULT_FLOAT'
-  elif format_default == 'long-long'
-    c_args += '-DFORMAT_DEFAULT_LONG_LONG'
-  elif format_default == 'integer'
-    c_args += '-DFORMAT_DEFAULT_INTEGER'
-  elif format_default == 'minimal'
-    c_args += '-DFORMAT_DEFAULT_MINIMAL'
-  endif
-endif
 
 if tinystdio and printf_aliases
   vfprintf_symbol = global_prefix + 'vfprintf'
@@ -767,6 +790,8 @@ picolibc_specs = configure_file(input: 'picolibc.specs.in',
 				install_dir: specs_dir,
 				install: specs_install)
 
+picolibc_specs_name = 'picolibc.specs'
+
 picolibcpp_specs = configure_file(input: 'picolibc.specs.in',
 				  output: 'picolibcpp.specs',
 				  configuration: specs_cpp_data,
@@ -774,25 +799,27 @@ picolibcpp_specs = configure_file(input: 'picolibc.specs.in',
 				  install: specs_install)
 
 # Not all compilers necessarily support all warnings; only use these which are:
-c_warnings = [
-  '-Werror=implicit-function-declaration',
+common_warnings = [
   '-Werror=vla',
   '-Warray-bounds',
-  '-Wold-style-definition',
   '-Werror=double-promotion',
+  '-Wno-missing-braces',
+  '-Wno-return-type',
+  '-Wno-unused-command-line-argument',
+  '-Wmissing-prototypes',
+  '-Wmissing-declarations',
 ]
 if get_option('analyzer')
-  c_warnings += [
+  common_warnings += [
     '-fanalyzer',
     ]
 endif
-disabled_warnings = [
-  '-Wno-missing-braces',
+c_warnings = common_warnings + [
+  '-Werror=implicit-function-declaration',
+  '-Wold-style-definition',
   '-Wno-implicit-int',
-  '-Wno-return-type',
-  '-Wno-unused-command-line-argument',
 ]
-c_flags = cc.get_supported_arguments(c_warnings, disabled_warnings)
+c_flags = cc.get_supported_arguments(c_warnings)
 c_args += c_flags
 native_c_args += c_flags
 
@@ -803,9 +830,21 @@ c_args += ['-D_LIBC', '-U_FORTIFY_SOURCE']
 # Select a fortify source option
 fortify_source = get_option('fortify-source')
 if fortify_source == 'none'
-  test_c_args += '-U_FORTIFY_SOURCE'
+  test_fortify_arg = '-U_FORTIFY_SOURCE'
 else
-  test_c_args += '-D_FORTIFY_SOURCE=' + fortify_source
+  test_fortify_arg = '-D_FORTIFY_SOURCE=' + fortify_source
+endif
+test_c_args += [test_fortify_arg]
+
+c_args += cc.get_supported_arguments(['-fno-stack-protector'])
+
+if have_cplusplus
+  cpp_warnings = common_warnings
+  cpp_flags = cpp.get_supported_arguments(cpp_warnings)
+  cpp_args += cpp_flags
+  cpp_flags = cpp.get_supported_arguments(['-fno-exceptions', '-fno-unwind-tables', '-fno-stack-protector'])
+  cpp_args += cpp_flags
+  test_cpp_args = cpp_args + [test_fortify_arg]
 endif
 
 # CompCert does not support bitfields in packed structs, so avoid using this optimization
@@ -891,6 +930,17 @@ if enable_multilib
   foreach target : target_list
     message('target ' + target)
     tmp = target.split(';')
+    matches_exclude = false
+    foreach exclude : multilib_exclude
+      if tmp[0].contains(exclude)
+        matches_exclude = true
+        message('skipping target ' + tmp[0])
+        break
+      endif
+    endforeach
+    if matches_exclude
+      continue
+    endif
     flags = []
 
     # Let the user specify a subset of the possible multilib
@@ -981,12 +1031,15 @@ foreach target : ['default-target'] + targets
       picolibc_linker_type_data.set('BFD_END', '*/')
       picolibc_linker_type_data.set('LLD_START', '')
       picolibc_linker_type_data.set('LLD_END', '')
+      picolibc_linker_type_data.set('TLS_PHDRS', 'tls PT_TLS;')
+      picolibc_linker_type_data.set('TLS_INIT_SEG', 'tls')
       if host_cpu_family == 'riscv'
         # ld.lld before version 15 did not support linker relaxations, disable
         # them if we are using an older version.
         # There is no `cc.get_linker_version()` function, so we detect ld.lld
         # version 15 by checking for a newly added linker flag.
-        if not cc.has_link_argument('--package-metadata=1')
+        # Note: --version still checks for valid arguments so this works.
+        if not cc.has_link_argument('-Wl,--package-metadata=1,--version')
           message('Linking for RISCV with ld.lld < 15, forcing -mno-relax')
           c_args += ['-mno-relax']
         endif
@@ -996,6 +1049,9 @@ foreach target : ['default-target'] + targets
       picolibc_linker_type_data.set('BFD_END', '')
       picolibc_linker_type_data.set('LLD_START', '/* For ld.lld: ')
       picolibc_linker_type_data.set('LLD_END', '*/')
+      picolibc_linker_type_data.set('TLS_PHDRS', '''tls_init PT_TLS;
+        tls PT_TLS;''')
+      picolibc_linker_type_data.set('TLS_INIT_SEG', 'tls_init')
     endif
 
     init_memory_template = '''
@@ -1218,9 +1274,9 @@ int main(void) { return foo(@0@); }
   conf_data.set('_HAVE_' + builtin[0].to_upper(), have_current_builtin, description: 'The compiler supports __' + builtin[0])
 endforeach
 
-NEWLIB_VERSION='4.1.0'
+NEWLIB_VERSION='4.3.0'
 NEWLIB_MAJOR_VERSION=4
-NEWLIB_MINOR_VERSION=1
+NEWLIB_MINOR_VERSION=3
 NEWLIB_PATCHLEVEL_VERSION=0
 
 if get_option('newlib-retargetable-locking') != get_option('newlib-multithread')
@@ -1245,11 +1301,13 @@ conf_data.set('_HAVE_WEAK_ATTRIBUTE', have_weak_attribute)
 conf_data.set('_WANT_REGISTER_FINI', get_option('newlib-register-fini'))
 conf_data.set('_WANT_IO_LONG_LONG', io_long_long)
 conf_data.set('_WANT_MINIMAL_IO_LONG_LONG', minimal_io_long_long)
+conf_data.set('_WANT_FAST_BUFIO', fast_bufio)
 conf_data.set('_WANT_IO_POS_ARGS', io_pos_args)
 conf_data.set('_WANT_IO_C99_FORMATS', io_c99_formats)
 conf_data.set('_IO_FLOAT_EXACT', io_float_exact)
 conf_data.set('_WANT_IO_PERCENT_B', io_percent_b)
 conf_data.set('_WANT_IO_LONG_DOUBLE', io_long_double)
+conf_data.set('_WANT_IO_WCHAR', io_wchar)
 conf_data.set('_ASSERT_VERBOSE', get_option('assert-verbose'))
 
 if not tinystdio
@@ -1260,7 +1318,6 @@ if not tinystdio
 endif
 conf_data.set('_WANT_REENT_SMALL', get_option('newlib-reent-small'))
 conf_data.set('_MB_CAPABLE', newlib_mb)
-conf_data.set('_MB_LEN_MAX', newlib_mb ? '8' : '1')
 conf_data.set('__SINGLE_THREAD__', get_option('newlib-multithread') == false)
 conf_data.set('_ICONV_ENABLE_EXTERNAL_CCS', newlib_iconv_external_ccs)
 conf_data.set('_ELIX_LEVEL', newlib_elix_level)
@@ -1292,10 +1349,13 @@ conf_data.set('_HAVE_INIT_FINI', get_option('newlib-initfini'), description: 'Su
 conf_data.set('NEWLIB_TLS', thread_local_storage, description: 'use thread local storage')
 conf_data.set('PICOLIBC_TLS', thread_local_storage, description: 'use thread local storage')
 conf_data.set('_HAVE_PICOLIBC_TLS_API', thread_local_storage and have_picolibc_tls_api, description: '_set_tls and _init_tls functions available')
+conf_data.set('_HAVE_PICOLIBC_TLS_RP2040', get_option('tls-rp2040'),
+              description: 'Use Raspberry Pi RP2040 CPUID register to index thread local storage value')
 conf_data.set('POSIX_IO', posix_io, description: 'Use open/close/read/write in tinystdio')
 conf_data.set('_PRINTF_SMALL_ULTOA', printf_small_ultoa, description: 'avoid software division in decimal conversion')
+conf_data.set('_PRINTF_PERCENT_N', printf_percent_n, description: 'support %n in printf format strings')
 conf_data.set('ATOMIC_UNGETC', atomic_ungetc, description: 'Use atomics for fgetc/ungetc for re-entrancy')
-conf_data.set('_PICOLIBC_ATOMIC_SIGNAL', get_option('atomic-signal'), description: 'Use atomics for signal/raise for re-entrancy')
+conf_data.set('_PICOLIBC_ATOMIC_SIGNAL', atomic_signal, description: 'Use atomics for signal/raise for re-entrancy')
 conf_data.set('_HAVE_BITFIELDS_IN_PACKED_STRUCTS', have_bitfields_in_packed_structs, description: 'Use bitfields in packed structs')
 conf_data.set('_HAVE_BUILTIN_MUL_OVERFLOW', have_builtin_mul_overflow, description: 'Compiler has __builtin_mul_overflow')
 conf_data.set('_HAVE_BUILTIN_ADD_OVERFLOW', have_builtin_add_overflow, description: 'Compiler has __builtin_add_overflow')
@@ -1493,6 +1553,11 @@ inc_dirs = [stdio_inc_dir, '.', 'newlib/libc/include']
 
 inc = include_directories(inc_dirs)
 
+inc_args = []
+foreach inc_dir : inc_dirs + [meson.current_build_dir()]
+  inc_args += '-I' + meson.current_source_dir() / inc_dir
+endforeach
+
 # We don't need '-fdata-sections' currently as there aren't any
 # files with data used in separate code paths. This works around
 # versions of gcc for RISC-V which have a bug that mis-names
@@ -1547,6 +1612,10 @@ if tests_enable_stack_protector
   endif
 endif
 
+if not tests_enable_stack_protector
+  test_c_args += cc.get_supported_arguments(['-fno-stack-protector'])
+endif
+
 if have_long_double and get_option('test-long-double')
   test_c_args += ['-D_TEST_LONG_DOUBLE']
   native_c_args += ['-D_TEST_LONG_DOUBLE']
@@ -1574,17 +1643,19 @@ endif
 
 if has_semihost
   specs = picolibc_specs
+  specs_name = picolibc_specs_name
 else
   specs = configure_file(input: 'test.specs.in',
 			 output: '@BASENAME@',
 			 configuration: specs_data,
 			 install: false)
+  specs_name = 'test.specs'
 endif
 
 # Clang does not support spec files
 specs_line = []
 if cc.get_id() != 'clang'
-  specs_line += [specs_prefix + '--specs', specs_prefix + meson.current_build_dir() / '@0@'.format(specs)]
+  specs_line += [specs_prefix + '--specs', specs_prefix + meson.current_build_dir() / specs_name]
 endif
 test_c_args += specs_line
 
@@ -1602,8 +1673,14 @@ if has_semihost
       picolibc_ld_value = get_variable('picolibc_' + target + '_ld', picolibc_ld)
     endif
 
+    if meson.version().version_compare('>=1.4.0')
+      picolibc_ld_string = picolibc_ld_value.full_path()
+    else
+      picolibc_ld_string = '@0@'.format(picolibc_ld_value)
+    endif
+
     set_variable(test_link_args_variable,
-		 ['-nostartfiles', '-T', '@0@'.format(picolibc_ld_value),
+		 ['-nostdlib', '-T', picolibc_ld_string,
 		  lib_gcc] + additional_libs_list + specs_line)
 
     set_variable(test_linker_files_variable, [picolibc_ld_value])
@@ -1620,6 +1697,9 @@ endif
 # make sure to include semihost BEFORE picocrt!
 if enable_picocrt
   subdir('picocrt')
+  picocrt_enable_mmu = get_option('picocrt-enable-mmu')
+  conf_data.set('_PICOCRT_ENABLE_MMU', picocrt_enable_mmu,
+                description: 'Turn on mmu in picocrt startup code')
 endif
 subdir('newlib')
 

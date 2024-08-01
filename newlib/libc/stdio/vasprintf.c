@@ -17,12 +17,8 @@
 /* This code was based on vsprintf.c */
 /* doc in vfprintf.c */
 
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "%W% (Berkeley) %G%";
-#endif /* LIBC_SCCS and not lint */
-
-#define _DEFAULT_SOURCE
-#include <_ansi.h>
+#define _GNU_SOURCE
+#include <sys/cdefs.h>
 #include <stdio.h>
 #include <limits.h>
 #include <stdarg.h>
@@ -39,6 +35,7 @@ vasprintf (
   FILE f;
 
   f._flags = __SWR | __SSTR | __SMBF ;
+  f._flags2 = 0;
   f._bf._base = f._p = NULL;
   f._bf._size = f._w = 0;
   f._file = -1;  /* No file. */

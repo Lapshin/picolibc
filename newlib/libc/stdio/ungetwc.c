@@ -65,7 +65,7 @@ C99
 */
 
 #define _DEFAULT_SOURCE
-#include <_ansi.h>
+#include <sys/cdefs.h>
 #include <errno.h>
 #include <limits.h>
 #include <stdio.h>
@@ -82,7 +82,7 @@ ungetwc (
   size_t len;
 
   _newlib_flockfile_start (fp);
-  ORIENT (fp, 1);
+  (void) ORIENT (fp, 1);
   if (wc == WEOF)
     wc = WEOF;
   else if ((len = wcrtomb(buf, wc, &fp->_mbstate)) == (size_t)-1)

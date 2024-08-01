@@ -23,9 +23,10 @@
 #ifndef _XDR_PRIVATE_H
 #define _XDR_PRIVATE_H
 
-#include <_ansi.h>
+#include <sys/cdefs.h>
 #include <stdarg.h>
 #include <stdint.h>
+#include <stddef.h>
 #include <sys/param.h>
 #include <sys/types.h>
 

@@ -26,8 +26,10 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <picolibc.h>
+
 #include "arm_asm.h"
-#include <_ansi.h>
+#include <sys/cdefs.h>
 #include <string.h>
 #include <limits.h>
 

@@ -69,7 +69,7 @@ C99, POSIX.1-2001.
 */
 
 #define _DEFAULT_SOURCE
-#include <_ansi.h>
+#include <sys/cdefs.h>
 #include <wchar.h>
 #include "local.h"
 
@@ -84,7 +84,7 @@ fwide (
 
   _newlib_flockfile_start (fp);
   if (mode != 0) {
-    ORIENT (fp, mode);
+    (void) ORIENT (fp, mode);
   }
   if (!(fp->_flags & __SORD))
     ret = 0;

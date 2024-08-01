@@ -61,6 +61,12 @@ POSIX.1-2008
 Supporting OS subroutines required: <<sbrk>>.
 */
 
+#ifdef __GNUC__
+#pragma GCC diagnostic ignored "-Wpragmas"
+#pragma GCC diagnostic ignored "-Wunknown-warning-option"
+#pragma GCC diagnostic ignored "-Wanalyzer-malloc-leak"
+#endif
+
 #define _DEFAULT_SOURCE
 #include <stdio.h>
 #include <wchar.h>
@@ -368,7 +374,7 @@ internalopen_memstream (
   fp->_flags |= __SL64;
 #endif
   fp->_close = memcloser;
-  ORIENT (fp, wide);
+  (void) ORIENT (fp, wide);
   _newlib_flockfile_end (fp);
   return fp;
 }

@@ -36,7 +36,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifndef TEST_FILE_NAME
 #define TEST_FILE_NAME "FOPEN.TXT"
+#endif
 
 #define check(condition, message) do {                  \
         if (!(condition)) {                             \
@@ -50,7 +52,7 @@
 
 #define MESSAGE "hello, world\n"
 
-void
+static void
 check_contents(int repeats)
 {
     FILE *f;

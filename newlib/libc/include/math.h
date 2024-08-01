@@ -31,13 +31,11 @@ LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
 OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 SUCH DAMAGE.
  */
-#ifndef  _MATH_H_
 
+#ifndef  _MATH_H_
 #define  _MATH_H_
 
 #include <sys/cdefs.h>
-#include <ieeefp.h>
-#include "_ansi.h"
 
 _BEGIN_STD_C
 
@@ -265,7 +263,10 @@ extern int __finite (double);
 extern int __finitef (float);
 #if defined(_HAVE_LONG_DOUBLE)
 extern int __fpclassifyl (long double);
+extern int __isinfl (long double);
+extern int __isnanl (long double);
 extern int __finitel (long double);
+extern int __signbitl (long double);
 #endif
 
 /* Note: isinf and isnan were once functions in newlib that took double
@@ -378,9 +379,16 @@ int __issignalingl(long double d);
 	     __builtin_signbit ((double) (__x)))
   #endif
 #else
-  #define signbit(__x) \
-	  ((sizeof(__x) == sizeof(float))  ?  __signbitf(__x) : \
-	                              __signbitd((double) (__x)))
+  #if defined(_HAVE_LONG_DOUBLE)
+    #define signbit(__x)							\
+	    ((sizeof(__x) == sizeof(float))  ? __signbitf(__x) :	\
+	     ((sizeof(__x) == sizeof(double)) ? __signbit ((double)(__x)) : \
+	      __signbitl((long double)(__x))))
+  #else
+    #define signbit(__x) \
+            ((sizeof(__x) == sizeof(float))  ?  __signbitf(__x) : \
+                                        __signbitd((double) (__x)))
+  #endif
 #endif
 
 #if __GNUC_PREREQ (2, 97) && !(defined(__riscv) && defined(__clang__))
@@ -538,6 +546,7 @@ extern float hypotf (float, float);
 /* These functions are always available for long double */
 
 extern long double hypotl (long double, long double);
+extern long double infinityl (void);
 extern long double sqrtl (long double);
 extern long double frexpl (long double, int *);
 extern long double scalbnl (long double, int);
@@ -558,6 +567,8 @@ extern long long int llroundl (long double);
 extern long double truncl (long double);
 extern long double nanl (const char *);
 extern long double floorl (long double);
+extern long double scalbl (long double, long double);
+extern long double significandl(long double);
 /* Compiler provides these */
 extern long double fabsl (long double);
 extern long double copysignl (long double, long double);
@@ -589,7 +600,6 @@ extern double nexttoward (double, long double);
 extern long double nexttowardl (long double, long double);
 extern long double log2l (long double);
 extern long double exp2l (long double);
-extern long double scalbl (long double, long double);
 extern long double tgammal (long double);
 extern long double remquol (long double, long double, int *);
 extern long double fdiml (long double, long double);
@@ -609,7 +619,6 @@ extern long double jnl(int, long double);
 extern long double ynl(int, long double);
 
 extern long double getpayloadl(const long double *x);
-extern long double significandl(long double);
 
 #endif /* _HAVE_LONG_DOUBLE_MATH */
 
@@ -718,10 +727,10 @@ extern int signgam;
 
 #include <machine/math.h>
 
-_END_STD_C
-
 #ifdef __FAST_MATH__
 #include <machine/fastmath.h>
 #endif
+
+_END_STD_C
 
 #endif /* _MATH_H_ */

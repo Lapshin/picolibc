@@ -16,8 +16,7 @@
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  */
 
-#ifndef _REENT_ONLY
-
+#define _DEFAULT_SOURCE
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
@@ -47,9 +46,10 @@ setenv (const char *name,
   size_t l_value;
   int offset;
 
-  if (strchr(name, '='))
+  /* Name cannot be NULL, empty, or contain an equal sign.  */ 
+  if (name == NULL || name[0] == '\0' || strchr(name, '='))
     {
-	    __errno_r(ptr) = EINVAL;
+      errno = EINVAL;
       return -1;
     }
 
@@ -146,5 +146,3 @@ unsetenv (const char *name)
   ENV_UNLOCK;
   return 0;
 }
-
-#endif /* !_REENT_ONLY */

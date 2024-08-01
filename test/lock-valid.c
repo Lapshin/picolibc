@@ -37,83 +37,101 @@
 #include <stdint.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <sys/lock.h>
+
+#ifdef RETARGETABLE_LOCKING
 
 /*
  * Validate lock usage in libc by creating fake locks
  * to be used during testing
  */
 
-#define _LOCK_T intptr_t*
+#define _LOCK_T struct __lock*
 
-intptr_t __lock___libc_recursive_mutex;
+struct __lock {
+    intptr_t    val;
+};
+
+struct __lock __lock___libc_recursive_mutex;
 
 #define MAX_LOCKS 32
 
-static intptr_t locks[MAX_LOCKS];
-static int lock_id;
+static struct __lock locks[MAX_LOCKS];
+static uint8_t in_use[MAX_LOCKS];
 
 /* Create a new dynamic non-recursive lock */
 void __retarget_lock_init(_LOCK_T *lock)
 {
-        assert(lock_id < MAX_LOCKS);
-        *lock = &locks[lock_id++];
-        **lock = 0;
+        int lock_id = 0;
+
+        for (lock_id = 0; lock_id < MAX_LOCKS; lock_id++)
+                if (!in_use[lock_id]) {
+                        in_use[lock_id] = 1;
+                        *lock = &locks[lock_id];
+                        (*lock)->val = 0;
+                        return;
+                }
+        assert(0);
 }
 
 /* Create a new dynamic recursive lock */
 void __retarget_lock_init_recursive(_LOCK_T *lock)
 {
-        assert(lock_id < MAX_LOCKS);
-        *lock = &locks[lock_id++];
-        **lock = 0;
+        __retarget_lock_init(lock);
 }
 
 /* Close dynamic non-recursive lock */
 void __retarget_lock_close(_LOCK_T lock)
 {
-        assert(*lock == 0);
+        assert(lock->val == 0);
+        int lock_id = lock - locks;
+        assert(0 <= lock_id && lock_id < MAX_LOCKS);
+        in_use[lock_id] = 0;
 }
 
 /* Close dynamic recursive lock */
 void __retarget_lock_close_recursive(_LOCK_T lock)
 {
-        assert(*lock == 0);
+        __retarget_lock_close(lock);
 }
 
 /* Acquiure non-recursive lock */
 void __retarget_lock_acquire(_LOCK_T lock)
 {
-        assert(*lock == 0);
-        *lock = 1;
+        assert(lock->val == 0);
+        lock->val = 1;
 }
 
 /* Acquiure recursive lock */
 void __retarget_lock_acquire_recursive(_LOCK_T lock)
 {
-        assert(*lock >= 0);
-        ++(*lock);
+        assert(lock->val >= 0);
+        ++(lock->val);
 }
 
 /* Release non-recursive lock */
 void __retarget_lock_release(_LOCK_T lock)
 {
-        assert(*lock == 1);
-        *lock = 0;
+        assert(lock->val == 1);
+        lock->val = 0;
 }
 
 /* Release recursive lock */
 void __retarget_lock_release_recursive(_LOCK_T lock)
 {
-        assert(*lock > 0);
-        --(*lock);
+        assert(lock->val > 0);
+        --(lock->val);
 }
 
 __attribute__((destructor))
 static void lock_validate(void)
 {
         int i;
-        for (i = 0; i < MAX_LOCKS; i++)
-                assert(locks[i] == 0);
+        for (i = 0; i < MAX_LOCKS; i++) {
+                assert(locks[i].val == 0);
+        }
 
-        assert(__lock___libc_recursive_mutex == 0);
+        assert(__lock___libc_recursive_mutex.val == 0);
 }
+
+#endif

@@ -54,7 +54,7 @@ static char sccsid[] = "%W% (Berkeley) %G%";
 #endif /* LIBC_SCCS and not lint */
 
 #define _DEFAULT_SOURCE
-#include <_ansi.h>
+#include <sys/cdefs.h>
 #include <stdio.h>
 #include <string.h>
 #include "fvwrite.h"
@@ -87,8 +87,10 @@ puts (
   fp = _stdout_r (ptr);
   CHECK_INIT (ptr, fp);
   _newlib_flockfile_start (fp);
-  ORIENT (fp, -1);
-  result = (_sfvwrite ( fp, &uio) ? EOF : '\n');
+  if (ORIENT (fp, -1) != -1)
+    result = EOF;
+  else
+    result = (_sfvwrite (fp, &uio) ? EOF : '\n');
   _newlib_flockfile_end (fp);
   return result;
 #else
@@ -100,7 +102,6 @@ puts (
   fp = _stdout_r (ptr);
   CHECK_INIT (ptr, fp);
   _newlib_flockfile_start (fp);
-  ORIENT (fp, -1);
   /* Make sure we can write.  */
   if (cantwrite (ptr, fp))
     goto err;

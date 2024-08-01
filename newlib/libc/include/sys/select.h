@@ -42,7 +42,7 @@ SUCH DAMAGE.
 #include <sys/cdefs.h>
 #include <sys/_sigset.h>
 #include <sys/_timeval.h>
-#include <sys/timespec.h>
+#include <sys/_timespec.h>
 
 #if !defined(_SIGSET_T_DECLARED)
 #define	_SIGSET_T_DECLARED
@@ -57,8 +57,8 @@ typedef	__sigset_t	sigset_t;
  * should be enough for most uses.
  */
 #ifndef FD_SETSIZE
-# ifdef __CYGWIN__
-#  define FD_SETSIZE	1024
+# if   defined(__rtems__)
+#  define FD_SETSIZE	256
 # else
 #  define FD_SETSIZE	64
 # endif

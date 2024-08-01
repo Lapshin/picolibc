@@ -51,12 +51,14 @@ set(tests
   math-funcs
   timegm
   time-tests
+  test-funopen
   test-strtod
   test-strchr
   test-memset
   test-put
   test-efcvt
   test-fma
+  test-sprintf-percent-n
   malloc_stress
   posix-io
   )
