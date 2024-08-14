@@ -31,24 +31,32 @@
 
 #include "stdio_private.h"
 
+FILE_FN_UNLOCKED_SPECIFIER
 int
-fputc(int c, FILE *stream)
+FILE_FN_UNLOCKED(fputc)(int c, FILE *stream)
 {
-    int ret = EOF;
-    __flockfile(stream);
 	if ((stream->flags & __SWR) == 0)
-		goto exit;
+		return EOF;
 
 	if (stream->put(c, stream) < 0) {
                 stream->flags |= __SERR;
-		goto exit;
+		return EOF;
         }
 
-	ret = (unsigned char) c;
-exit:
-    __funlockfile(stream);
-	return ret;
+	return (unsigned char) c;
 }
+
+#ifdef _WANT_FLOCKFILE
+int
+fputc(int c, FILE *stream)
+{
+    int ret;
+    __flockfile(stream);
+    ret = FILE_FN_UNLOCKED(fputc)(c, stream);
+    __funlockfile(stream);
+    return ret;
+}
+#endif
 
 #ifdef _HAVE_ALIAS_ATTRIBUTE
 __strong_reference(fputc, putc);

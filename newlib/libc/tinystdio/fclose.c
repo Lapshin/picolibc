@@ -34,8 +34,13 @@
 int
 fclose(FILE *f)
 {
-	int ret = 0;
-	__flockfile(f);
+    int ret = 0;
+#ifdef _WANT_FLOCKFILE
+    FILE f_copy;
+    f_copy.lock = f->lock;
+#endif
+
+    __flockfile(f);
 
 	if (f->flags & __SCLOSE) {
 		/*
@@ -46,6 +51,10 @@ fclose(FILE *f)
 			ret = (*cf->close)(f);
 	}
 
-	__flockfile_close(f);
+#ifdef _WANT_FLOCKFILE
+    /* "f" could be already freed, so close copied lock */
+	__flockfile_close(&f_copy);
+#endif
+
 	return ret;
 }
