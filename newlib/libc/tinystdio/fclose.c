@@ -34,12 +34,18 @@
 int
 fclose(FILE *f)
 {
-        struct __file_close *cf = (struct __file_close *) f;
-        if ((f->flags & __SCLOSE) && cf->close) {
+	int ret = 0;
+	__flockfile(f);
+
+	if (f->flags & __SCLOSE) {
 		/*
 		 * File has 'close' function, call it
 		 */
-		return (*cf->close)(f);
+		struct __file_close *cf = (struct __file_close *) f;
+		if (cf)
+			ret = (*cf->close)(f);
 	}
-	return 0;
+
+	__flockfile_close(f);
+	return ret;
 }

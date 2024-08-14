@@ -171,6 +171,36 @@ __stdio_sflags (const char *mode);
 
 #endif // POSIX_IO
 
+static inline void __flockfile(FILE *f) {
+	(void) f;
+#ifdef _WANT_FLOCKFILE
+	if (f->lock)
+		__lock_acquire_recursive(f->lock);
+#endif
+}
+
+static inline void __funlockfile(FILE *f) {
+	(void) f;
+#ifdef _WANT_FLOCKFILE
+	if (f->lock)
+		__lock_release_recursive(f->lock);
+#endif
+}
+
+static inline void __flockfile_init(FILE *f) {
+	(void) f;
+#ifdef _WANT_FLOCKFILE
+	__lock_init_recursive(f->lock);
+#endif
+}
+
+static inline void __flockfile_close(FILE *f) {
+	(void) f;
+#ifdef _WANT_FLOCKFILE
+	__lock_close(f->lock);
+#endif
+}
+
 int	__d_vfprintf(FILE *__stream, const char *__fmt, va_list __ap) __FORMAT_ATTRIBUTE__(printf, 2, 0);
 int	__f_vfprintf(FILE *__stream, const char *__fmt, va_list __ap) __FORMAT_ATTRIBUTE__(printf, 2, 0);
 int	__d_sprintf(char *__s, const char *__fmt, ...) __FORMAT_ATTRIBUTE__(printf, 2, 0);
