@@ -108,13 +108,11 @@ _BEGIN_STD_C
 #endif
 
 #ifdef __i386__
-# if   defined(__unix__) || defined(__rtems__)
-#  define _JBLEN	9
-# elif defined(__iamcu__)
+# if defined(__iamcu__)
 /* Intel MCU jmp_buf only covers callee-saved registers. */
 #  define _JBLEN	6
 # else
-#  include "setjmp-dj.h"
+#  define _JBLEN	9
 # endif
 #endif
 
@@ -286,10 +284,20 @@ _BEGIN_STD_C
 #define _JBLEN 16
 #endif
 
-#if defined(__arc__) || defined(__ARC64__)
+#ifdef __arc__
 #define _JBLEN 25 /* r13-r30,blink,lp_count,lp_start,lp_end,mlo,mhi,status32 */
 #define _JBTYPE unsigned long
 #endif
+
+#ifdef __ARC64__
+/* r14-r27,sp,ilink,r30,blink  */
+#define _JBLEN 18
+#ifdef __ARC64_ARCH64__
+#define _JBTYPE long long
+#else  /* __ARC64_ARCH32__ */
+#define _JBTYPE long
+#endif
+#endif /* __ARC64__ */
 
 #ifdef __MMIX__
 /* Using a layout compatible with GCC's built-in.  */

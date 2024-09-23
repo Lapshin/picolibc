@@ -58,7 +58,6 @@ SUCH DAMAGE.
 typedef __WINT_TYPE__ wint_t;
 #endif
 
-#include <sys/config.h>
 #include <machine/_types.h>
 
 #ifndef __machine_blkcnt_t_defined
@@ -257,5 +256,16 @@ typedef	__int32_t	__nl_item;
 typedef	unsigned short	__nlink_t;
 typedef	long		__suseconds_t;	/* microseconds (signed) */
 typedef	unsigned long	__useconds_t;	/* microseconds (unsigned) */
+
+#ifdef __STDC_WANT_LIB_EXT1__
+#if (__STDC_WANT_LIB_EXT1__ != 0) && (__STDC_WANT_LIB_EXT1__ != 1)
+#error Please define __STDC_WANT_LIB_EXT__ as 0 or 1
+#endif
+
+#if __STDC_WANT_LIB_EXT1__ == 1
+typedef size_t __rsize_t;
+typedef int __errno_t;
+#endif
+#endif
 
 #endif	/* _SYS__TYPES_H */

@@ -42,7 +42,7 @@ project('picolibc', 'c',
 	],
 	license : 'BSD',
 	meson_version : '>= 0.53',
-	version: '1.8.6'
+	version: '1.8.7'
        )
 
 targets = []
@@ -81,8 +81,6 @@ endif
 cpu_family_aliases = {
 		       # aarch64
 		       'arm64' : 'aarch64',
-		       # arc
-		       'arc64' : 'arc',
 		       # cris
 		       'crisv32' : 'cris',
 		       # m68hc11
@@ -535,20 +533,39 @@ if thread_local_storage
 endif
 
 if sysroot_install
+  # Get 'sysroot' or 'GCC_EXEC_PREFIX' from GCC output
   sysroot = run_command(cc.cmd_array() + ['-print-sysroot'], check : true).stdout().split('\n')[0]
   if sysroot != ''
-    specs_prefix_format = '%R/@0@'
+    specs_prefix_format_format = '%R/@0@'
+    specs_prefix_format_default = '%R/@0@'
   else
-    sysroot = cc_install_dir + '../../../..'
-    specs_prefix_format = '%:getenv(GCC_EXEC_PREFIX ../../@0@)'
-  endif
-  if not get_option('sysroot-install-skip-checks')
-    if sysroot == ''
+    if not get_option('sysroot-install-skip-checks')
       error('sysroot install requested, but compiler has no sysroot')
     endif
-    if not fs.is_samepath(sysroot, prefix)
-      error('sysroot install requires --prefix=' + sysroot)
+    sysroot = run_command(cc.cmd_array() + ['-print-search-dirs'], check : true).stdout().split('\n')[0].split(' ')[1]
+    specs_prefix_format_format = '%:getenv(GCC_EXEC_PREFIX @0@)'
+    specs_prefix_format_default = '%:getenv(GCC_EXEC_PREFIX ../../@0@)'
+  endif
+
+  # Try to calculate relative path from sysroot to prefix
+  specs_prefix_format = ''
+  if fs.exists(sysroot)
+    sysroot_to_prefix_correction = ''
+    foreach _ : sysroot.split('/')
+      if fs.is_samepath(sysroot + '/' + sysroot_to_prefix_correction, prefix)
+        specs_prefix_format = specs_prefix_format_format.format(sysroot_to_prefix_correction + '@0@')
+        break
+      endif
+      sysroot_to_prefix_correction += '../'
+    endforeach
+  endif
+
+  # Use default 'specs_prefix_format' if can not have relative sysroot path
+  if specs_prefix_format == ''
+    if not get_option('sysroot-install-skip-checks')
+      error('sysroot install requires sysroot(' + sysroot + ') to be a subdirectory of --prefix=<PATH>(' + prefix + ')')
     endif
+    specs_prefix_format = specs_prefix_format_default
   endif
 else
   specs_prefix_format = prefix + '/@0@'
@@ -1635,30 +1652,6 @@ endif
 test_env = environment({'PICOLIBC_TEST' : '1'})
 test_env.prepend('PATH', meson.current_source_dir() / 'scripts')
 
-# CompCert needs the '-WUl,' prefix to correctly pass the --spec parameters to the linker
-specs_prefix = ''
-if cc.get_id() == 'ccomp'
-  specs_prefix = '-WUl,'
-endif
-
-if has_semihost
-  specs = picolibc_specs
-  specs_name = picolibc_specs_name
-else
-  specs = configure_file(input: 'test.specs.in',
-			 output: '@BASENAME@',
-			 configuration: specs_data,
-			 install: false)
-  specs_name = 'test.specs'
-endif
-
-# Clang does not support spec files
-specs_line = []
-if cc.get_id() != 'clang'
-  specs_line += [specs_prefix + '--specs', specs_prefix + meson.current_build_dir() / specs_name]
-endif
-test_c_args += specs_line
-
 if has_semihost
   foreach target : ['default-target'] + targets
     if target == 'default-target'
@@ -1680,18 +1673,18 @@ if has_semihost
     endif
 
     set_variable(test_link_args_variable,
-		 ['-nostdlib', '-T', picolibc_ld_string,
-		  lib_gcc] + additional_libs_list + specs_line)
+		 ['-Wl,--gc-sections', '-nostdlib', '-T', picolibc_ld_string]
+       + additional_libs_list
+       + [lib_gcc])
 
     set_variable(test_linker_files_variable, [picolibc_ld_value])
 
     # Make sure all of the tests get re-linked if the linker scripts change.
-    set_variable(test_link_depends_variable, [picolibc_ld_value, specs])
+    set_variable(test_link_depends_variable, [picolibc_ld_value])
   endforeach
 else
-  test_link_args = specs_line
-  test_linker_files = [specs]
-  test_link_depends = [specs]
+  test_link_args = ['-Wl,--gc-sections']
+  test_link_depends = []
 endif
 
 # make sure to include semihost BEFORE picocrt!

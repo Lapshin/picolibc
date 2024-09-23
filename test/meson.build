@@ -133,8 +133,8 @@ foreach target : targets
   endif
 
   _c_args = value[1] + get_variable('test_c_args_' + target, test_c_args)
-  _link_args = value[1] + get_variable('test_link_args_' + target, test_link_args)
-  _link_depends = get_variable('test_link_depends_' + target, test_link_depends)
+  _link_args = value[1] + _lib_files + get_variable('test_link_args_' + target, test_link_args)
+  _link_depends = get_variable('test_link_depends_' + target, test_link_depends) + _libs
   if have_cplusplus
     _cpp_args = value[1] + get_variable('test_cpp_args_' + target, test_cpp_args)
   endif
@@ -149,7 +149,7 @@ foreach target : targets
   test(t1_name,
        executable(t1_name, ['printf_scanf.c', 'lock-valid.c'],
 		  c_args: double_printf_compile_args + _c_args,
-		  link_args: double_printf_link_args + _lib_files + _link_args,
+		  link_args: double_printf_link_args + _link_args,
 		  objects: _objs,
 		  link_depends:  _link_depends + _libs,
 		  include_directories: inc),
@@ -166,7 +166,7 @@ foreach target : targets
   test(t1_name,
        executable(t1_name, ['printf_scanf.c', 'lock-valid.c'],
 		  c_args: float_printf_compile_args + _c_args,
-		  link_args: float_printf_link_args + _lib_files + _link_args,
+		  link_args: float_printf_link_args + _link_args,
 		  objects: _objs,
 		  link_depends:  _link_depends + _libs,
 		  include_directories: inc),
@@ -183,7 +183,7 @@ foreach target : targets
   test(t1_name,
        executable(t1_name, ['printf_scanf.c', 'lock-valid.c'],
 		  c_args: llong_printf_compile_args + _c_args,
-		  link_args: llong_printf_link_args + _lib_files + _link_args,
+		  link_args: llong_printf_link_args + _link_args,
 		  objects: _objs,
 		  link_depends:  _link_depends + _libs,
 		  include_directories: inc),
@@ -200,7 +200,7 @@ foreach target : targets
   test(t1_name,
        executable(t1_name, ['printf_scanf.c', 'lock-valid.c'],
 		  c_args: int_printf_compile_args + _c_args,
-		  link_args: int_printf_link_args + _lib_files + _link_args,
+		  link_args: int_printf_link_args + _link_args,
 		  objects: _objs,
 		  link_depends:  _link_depends + _libs,
 		  include_directories: inc),
@@ -217,7 +217,7 @@ foreach target : targets
   test(t1_name,
        executable(t1_name, ['printf_scanf.c', 'lock-valid.c'],
 		  c_args: min_printf_compile_args + _c_args,
-		  link_args: min_printf_link_args + _lib_files + _link_args,
+		  link_args: min_printf_link_args + _link_args,
 		  objects: _objs,
 		  link_depends:  _link_depends + _libs,
 		  include_directories: inc),
@@ -234,9 +234,9 @@ foreach target : targets
   test(t1_name,
        executable(t1_name, ['printf-tests.c', 'lock-valid.c'],
 		  c_args: double_printf_compile_args + _c_args,
-		  link_args: double_printf_link_args + _lib_files + _link_args,
+		  link_args: double_printf_link_args + _link_args,
 		  objects: _objs,
-		  link_depends: _libs,
+		  link_depends:  _link_depends + _libs,
 		  include_directories: inc),
        depends: bios_bin,
        env: test_env)
@@ -251,9 +251,9 @@ foreach target : targets
   test(t1_name,
        executable(t1_name, ['printf-tests.c', 'lock-valid.c'],
 		  c_args: float_printf_compile_args + _c_args,
-		  link_args: float_printf_link_args + _lib_files + _link_args,
+		  link_args: float_printf_link_args + _link_args,
 		  objects: _objs,
-		  link_depends: _libs,
+		  link_depends:  _link_depends + _libs,
 		  include_directories: inc),
        depends: bios_bin,
        env: test_env)
@@ -268,9 +268,9 @@ foreach target : targets
   test(t1_name,
        executable(t1_name, ['printf-tests.c', 'lock-valid.c'],
 		  c_args: int_printf_compile_args + _c_args,
-		  link_args: int_printf_link_args + _lib_files + _link_args,
+		  link_args: int_printf_link_args + _link_args,
 		  objects: _objs,
-		  link_depends: _libs,
+		  link_depends:  _link_depends + _libs,
 		  include_directories: inc),
        depends: bios_bin,
        env: test_env)
@@ -285,9 +285,9 @@ foreach target : targets
   test(t1_name,
        executable(t1_name, ['printf-tests.c', 'lock-valid.c'],
 		  c_args: min_printf_compile_args + _c_args,
-		  link_args: min_printf_link_args + _lib_files + _link_args,
+		  link_args: min_printf_link_args + _link_args,
 		  objects: _objs,
-		  link_depends: _libs,
+		  link_depends:  _link_depends + _libs,
 		  include_directories: inc),
        depends: bios_bin,
        env: test_env)
@@ -309,9 +309,9 @@ foreach target : targets
   test(t1_name,
        executable(t1_name, ['time-sprintf.c', 'lock-valid.c'],
 		  c_args: int_printf_compile_args + _c_args + ['-fno-builtin'],
-		  link_args: int_printf_link_args + _lib_files + _link_args,
+		  link_args: int_printf_link_args + _link_args,
 		  objects: _objs,
-		  link_depends: _libs,
+		  link_depends:  _link_depends + _libs,
 		  include_directories: inc),
        depends: bios_bin,
        env: test_env)
@@ -328,7 +328,7 @@ foreach target : targets
 		  c_args: _c_args,
 		  link_args: _link_args,
 		  objects: _objs,
-		  link_with: _libs,
+		  link_depends:  _link_depends + _libs,
 		  include_directories: inc),
        depends: bios_bin,
        env: test_env)
@@ -347,7 +347,7 @@ foreach target : targets
 		  c_args: _c_args,
 		  link_args:  _link_args,
 		  objects: _objs,
-		  link_with: _libs,
+		  link_depends:  _link_depends + _libs,
 		  include_directories: inc),
        depends: bios_bin,
        env: test_env)
@@ -357,7 +357,7 @@ foreach target : targets
 		  c_args: _c_args + ['-DRETVAL=1'],
 		  link_args:  _link_args,
 		  objects: _objs,
-		  link_with: _libs,
+		  link_depends:  _link_depends + _libs,
 		  include_directories: inc),
        depends: bios_bin,
        env: test_env,
@@ -376,7 +376,7 @@ foreach target : targets
 		  c_args: _c_args,
 		  link_args:  _link_args,
 		  objects: _objs,
-		  link_with: _libs,
+		  link_depends:  _link_depends + _libs,
 		  include_directories: inc),
        depends: bios_bin,
        env: test_env,
@@ -401,7 +401,7 @@ foreach target : targets
 		    c_args: _c_args,
 		    link_args:  _link_args,
 		    objects: _objs_minimal,
-		    link_with: _libs,
+		    link_depends:  _link_depends + _libs,
 		    include_directories: inc),
          depends: bios_bin,
 	 env: test_env)
@@ -419,7 +419,7 @@ foreach target : targets
 		  c_args: arg_fnobuiltin + _c_args,
 		  link_args: _link_args,
 		  objects: _objs,
-		  link_with: _libs,
+		  link_depends:  _link_depends + _libs,
 		  include_directories: inc),
        depends: bios_bin,
        env: test_env)
@@ -436,7 +436,7 @@ foreach target : targets
 		  c_args: arg_fnobuiltin + _c_args,
 		  link_args: _link_args,
 		  objects: _objs,
-		  link_with: _libs,
+		  link_depends:  _link_depends + _libs,
 		  include_directories: inc),
        depends: bios_bin,
        env: test_env)
@@ -454,8 +454,7 @@ foreach target : targets
 		  c_args: double_printf_compile_args + arg_fnobuiltin + _c_args,
 		  link_args: double_printf_link_args + _link_args,
 		  objects: _objs,
-		  link_with: _libs,
-		  link_depends:  _link_depends,
+		  link_depends:  _link_depends + _libs,
 		  include_directories: inc),
        depends: bios_bin,
        env: test_env,
@@ -475,8 +474,7 @@ foreach target : targets
 		  c_args: double_printf_compile_args + _c_args,
 		  link_args: double_printf_link_args + _link_args,
 		  objects: _objs,
-		  link_with: _libs,
-		  link_depends:  _link_depends,
+		  link_depends:  _link_depends + _libs,
 		  include_directories: inc),
        depends: bios_bin,
        env: test_env,
@@ -496,8 +494,7 @@ foreach target : targets
 		           c_args: _c_args,
 		           link_args: _link_args,
 		           objects: _objs,
-		           link_with: _libs,
-		           link_depends:  _link_depends,
+		           link_depends:  _link_depends + _libs,
 		           include_directories: inc)
 
     test(t1_name + '-success',
@@ -538,8 +535,7 @@ foreach target : targets
 		    c_args: c_sanitize_bounds_flags + _c_args + test_ubsan_flags,
 		    link_args: _link_args,
 		    objects: _objs,
-		    link_with: _libs,
-		    link_depends:  _link_depends,
+		    link_depends:  _link_depends + _libs,
 		    include_directories: inc),
 	 depends: bios_bin,
 	 env: test_env,
@@ -557,12 +553,12 @@ foreach target : targets
   test(t1_name,
        executable(t1_name, ['test-long-long.c', 'lock-valid.c'],
 		  c_args: llong_printf_compile_args + _c_args,
-		  link_args: llong_printf_link_args + _lib_files + _link_args,
+		  link_args: llong_printf_link_args + _link_args,
 		  objects: _objs,
 		  link_depends:  _link_depends + _libs,
 		  include_directories: inc),
        depends: bios_bin,
-       timeout: 60,
+       timeout: 120,
        env: test_env)
 
   t1 = 'test-long-long'
@@ -575,13 +571,78 @@ foreach target : targets
   test(t1_name,
        executable(t1_name, ['test-long-long.c', 'lock-valid.c'],
 		  c_args: double_printf_compile_args + _c_args,
-		  link_args: double_printf_link_args + _lib_files + _link_args,
+		  link_args: double_printf_link_args + _link_args,
 		  objects: _objs,
 		  link_depends:  _link_depends + _libs,
 		  include_directories: inc),
        depends: bios_bin,
-       timeout: 60,
+       timeout: 120,
        env: test_env)
+
+  plain_tests = ['rand', 'regex', 'ungetc', 'fenv',
+		 'malloc', 'tls',
+		 'ffs', 'setjmp', 'atexit', 'on_exit',
+		 'math-funcs', 'timegm', 'time-tests',
+                 'test-strtod', 'test-strchr',
+		 'test-memset', 'test-put',
+		 'test-efcvt', 'test-atomic',
+		 'test-raise',
+                 'test-fma',
+                 'test-funopen',
+		]
+
+  if have_attr_ctor_dtor
+    plain_tests += 'constructor'
+  endif
+
+  if have_complex
+    plain_tests += 'complex-funcs'
+  endif
+
+  if newlib_nano_malloc or tests_enable_full_malloc_stress
+    plain_tests += 'malloc_stress'
+  endif
+
+  if tinystdio
+    plain_tests += 't_fmemopen'
+  endif
+
+  if (posix_io or not tinystdio) and tests_enable_posix_io
+    plain_tests += ['posix-io']
+
+    # legacy stdio doesn't work on semihosting, so just skip it
+    if tinystdio
+      plain_tests += ['test-fopen',
+                      'test-mktemp',
+                      'test-tmpnam',
+                      'test-fread-fwrite',
+                      'test-ungetc-ftell',
+                      'test-fgetc',
+                      'test-fgets-eof',
+                     ]
+    endif
+  endif
+
+  if tests_enable_stack_protector
+    plain_tests += 'stack-smash'
+  endif
+
+  plain_tests += ['test-memcpy_s',
+                  'test-memset_s',
+                  'test-memmove_s',
+                  'test-strcat_s',
+                  'test-strcpy_s',
+                  'test-strerror_s',
+                  'test-strerrorlen_s',
+                  'test-strncat_s',
+                  'test-strncpy_s',
+                  'test-strnlen_s',
+                  ]
+
+  if tinystdio
+    plain_tests += 'test-sprintf_s'
+  endif
+
 
   foreach t1 : plain_tests
     t1_src = t1 + '.c'
@@ -597,8 +658,7 @@ foreach target : targets
 		    c_args: double_printf_compile_args + test_file_name_arg + _c_args,
 		    link_args: double_printf_link_args + _link_args,
 		    objects: _objs,
-		    link_with: _libs,
-		    link_depends:  _link_depends,
+		    link_depends:  _link_depends + _libs,
 		    include_directories: inc),
          depends: bios_bin,
 	 timeout: 60,
@@ -618,8 +678,7 @@ foreach target : targets
                     cpp_args: _cpp_args,
 		    link_args: _cpp_args + _link_args,
 		    objects: _objs,
-		    link_with: _libs,
-		    link_depends:  _link_depends,
+		    link_depends:  _link_depends + _libs,
                     include_directories: inc))
   endif
 endforeach

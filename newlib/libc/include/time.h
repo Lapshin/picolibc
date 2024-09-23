@@ -45,11 +45,10 @@ SUCH DAMAGE.
 #define __need_size_t
 #define __need_NULL
 #include <stddef.h>
+#include <sys/_types.h>
+#include <sys/_timespec.h>
 
 _BEGIN_STD_C
-
-/* Get time_t and struct timespec */
-#include <sys/_timespec.h>
 
 #ifndef _CLOCKS_PER_SEC_
 #define _CLOCKS_PER_SEC_ 1000000
@@ -291,6 +290,20 @@ int        timer_settime (timer_t timerid, int flags,
 #endif
 
 void       tzset (void);
+
+#if __STDC_WANT_LIB_EXT1__ == 1
+#include <sys/_types.h>
+
+#ifndef _ERRNO_T_DEFINED
+typedef __errno_t errno_t;
+#define _ERRNO_T_DEFINED
+#endif
+
+#ifndef _RSIZE_T_DEFINED
+typedef __rsize_t rsize_t;
+#define _RSIZE_T_DEFINED
+#endif
+#endif
 
 _END_STD_C
 
